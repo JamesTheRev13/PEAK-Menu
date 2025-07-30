@@ -8,7 +8,6 @@
     <Version>1.0.0</Version>
     <Authors>Bob Saget</Authors>
     <Nullable>enable</Nullable>
-    <LangVersion>latest</LangVersion>
     <OutputPath>build\</OutputPath>
     <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
   </PropertyGroup>
@@ -18,16 +17,12 @@
   </PropertyGroup>
   
   <ItemGroup>
-    <PackageReference Include="BepInEx.Analyzers" Version="1.0.8">
+    <PackageReference Include="BepInEx.Analyzers" Version="1.*">
       <PrivateAssets>all</PrivateAssets>
-      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
-    <PackageReference Include="BepInEx.Core" Version="5.4.21" />
-    <PackageReference Include="BepInEx.PluginInfoProps" Version="2.1.0" />
+    <PackageReference Include="BepInEx.Core" Version="5.*" />
+    <PackageReference Include="BepInEx.PluginInfoProps" Version="2.*" />
     <PackageReference Include="HarmonyX" Version="2.10.2" />
-    <PackageReference Include="MonoMod.Backports" Version="1.1.2" IncludeAssets="compile"/>
-    <PackageReference Include="MonoMod.ILHelpers" Version="1.1.0" />
-    <PackageReference Include="MonoMod.Utils" Version="25.0.8" />
     <PackageReference Include="UnityEngine.Modules" Version="6000.1.14" IncludeAssets="compile" />
   </ItemGroup>
 

@@ -28,32 +28,32 @@ namespace PEAK_Menu.Commands
             if (string.IsNullOrWhiteSpace(commandLine))
                 return false;
 
-            var parts = commandLine.Split(' ', StringSplitOptions.RemoveEmptyEntries);
-            var commandName = parts[0];
-            var parameters = parts.Skip(1).ToArray();
-
-            if (_commands.TryGetValue(commandName, out var command))
+            try
             {
-                if (command.CanExecute())
+                var parts = commandLine.Split(new char[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
+                var commandName = parts[0];
+                var parameters = parts.Length > 1 ? parts.Skip(1).ToArray() : new string[0];
+
+                if (_commands.TryGetValue(commandName, out var command))
                 {
-                    try
+                    if (command.CanExecute())
                     {
                         command.Execute(parameters);
                         return true;
                     }
-                    catch (Exception ex)
+                    else
                     {
-                        Plugin.Log.LogError($"Error executing command '{commandName}': {ex.Message}");
+                        Plugin.Log.LogWarning($"Command '{commandName}' cannot be executed at this time");
                     }
                 }
                 else
                 {
-                    Plugin.Log.LogWarning($"Command '{commandName}' cannot be executed at this time");
+                    Plugin.Log.LogWarning($"Unknown command: {commandName}");
                 }
             }
-            else
+            catch (Exception ex)
             {
-                Plugin.Log.LogWarning($"Unknown command: {commandName}");
+                Plugin.Log.LogError($"Error executing command '{commandLine}': {ex.Message}");
             }
 
             return false;
@@ -72,9 +72,16 @@ namespace PEAK_Menu.Commands
 
         private void RegisterDefaultCommands()
         {
-            RegisterCommand(new HelpCommand(this));
-            RegisterCommand(new ClearCommand());
-            RegisterCommand(new VersionCommand());
+            try
+            {
+                RegisterCommand(new HelpCommand(this));
+                RegisterCommand(new ClearCommand());
+                RegisterCommand(new VersionCommand());
+            }
+            catch (Exception ex)
+            {
+                Plugin.Log.LogError($"Error registering default commands: {ex.Message}");
+            }
         }
 
         public void Cleanup()

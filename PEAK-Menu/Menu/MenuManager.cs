@@ -13,22 +13,44 @@ namespace PEAK_Menu.Menu
 
         public void Initialize()
         {
-            _commandManager = new CommandManager();
-            _menuUI = new MenuUI(this);
-            Plugin.Log.LogInfo("Menu system initialized");
+            try
+            {
+                _commandManager = new CommandManager();
+                _menuUI = new MenuUI(this);
+                Plugin.Log.LogInfo("Menu system initialized");
+            }
+            catch (System.Exception ex)
+            {
+                Plugin.Log.LogError($"Failed to initialize menu system: {ex.Message}");
+            }
         }
 
         public void Update()
         {
-            if (Input.GetKeyDown(Plugin.PluginConfig.MenuToggleKey.Value))
+            try
             {
-                ToggleMenu();
+                if (Plugin.PluginConfig?.MenuToggleKey?.Value != null && 
+                    Input.GetKeyDown(Plugin.PluginConfig.MenuToggleKey.Value))
+                {
+                    ToggleMenu();
+                }
+            }
+            catch (System.Exception ex)
+            {
+                Plugin.Log.LogError($"Error in MenuManager.Update: {ex.Message}");
             }
         }
 
         public void OnGUI()
         {
-            _menuUI?.OnGUI();
+            try
+            {
+                _menuUI?.OnGUI();
+            }
+            catch (System.Exception ex)
+            {
+                Plugin.Log.LogError($"Error in MenuManager.OnGUI: {ex.Message}");
+            }
         }
 
         public void ToggleMenu()
@@ -39,7 +61,15 @@ namespace PEAK_Menu.Menu
 
         public bool ExecuteCommand(string commandLine)
         {
-            return _commandManager.ExecuteCommand(commandLine);
+            try
+            {
+                return _commandManager?.ExecuteCommand(commandLine) ?? false;
+            }
+            catch (System.Exception ex)
+            {
+                Plugin.Log.LogError($"Error executing command: {ex.Message}");
+                return false;
+            }
         }
 
         public void AddToConsole(string message)
@@ -49,7 +79,14 @@ namespace PEAK_Menu.Menu
 
         public void Cleanup()
         {
-            _commandManager?.Cleanup();
+            try
+            {
+                _commandManager?.Cleanup();
+            }
+            catch (System.Exception ex)
+            {
+                Plugin.Log.LogError($"Error during cleanup: {ex.Message}");
+            }
         }
     }
 }
