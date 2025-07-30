@@ -64,7 +64,7 @@ namespace PEAK_Menu.Commands
             return _commands.Values.Where(cmd => cmd.CanExecute());
         }
 
-        public ICommand? GetCommand(string name)
+        public ICommand GetCommand(string name)
         {
             _commands.TryGetValue(name, out var command);
             return command;
@@ -74,9 +74,21 @@ namespace PEAK_Menu.Commands
         {
             try
             {
+                // Core commands
                 RegisterCommand(new HelpCommand(this));
                 RegisterCommand(new ClearCommand());
                 RegisterCommand(new VersionCommand());
+                
+                // Game information commands
+                RegisterCommand(new StatusCommand());
+                RegisterCommand(new InventoryCommand());
+                RegisterCommand(new EnvironmentCommand());
+                
+                // Game interaction commands
+                RegisterCommand(new CustomizationCommand());
+                RegisterCommand(new TeleportCommand());
+                
+                Plugin.Log.LogInfo($"Registered {_commands.Count} commands successfully");
             }
             catch (Exception ex)
             {

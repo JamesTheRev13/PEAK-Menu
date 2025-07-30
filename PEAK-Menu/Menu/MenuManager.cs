@@ -77,6 +77,11 @@ namespace PEAK_Menu.Menu
             _menuUI?.AddToConsole(message);
         }
 
+        public void ClearConsole()
+        {
+            _menuUI?.ClearConsole();
+        }
+
         public void Cleanup()
         {
             try

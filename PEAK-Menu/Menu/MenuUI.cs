@@ -9,11 +9,13 @@ namespace PEAK_Menu.Menu
         private string _consoleInput = "";
         private Vector2 _scrollPosition;
         private readonly System.Collections.Generic.List<string> _consoleOutput;
+        private int _selectedTab = 0;
+        private readonly string[] _tabNames = { "Console", "Player", "Environment" };
 
         public MenuUI(MenuManager menuManager)
         {
             _menuManager = menuManager;
-            _windowRect = new Rect(50, 50, 600, 400);
+            _windowRect = new Rect(50, 50, 700, 500);
             _consoleOutput = new System.Collections.Generic.List<string>();
         }
 
@@ -30,8 +32,30 @@ namespace PEAK_Menu.Menu
         {
             GUILayout.BeginVertical();
 
+            // Tab selection
+            _selectedTab = GUILayout.Toolbar(_selectedTab, _tabNames);
+
+            switch (_selectedTab)
+            {
+                case 0:
+                    DrawConsoleTab();
+                    break;
+                case 1:
+                    DrawPlayerTab();
+                    break;
+                case 2:
+                    DrawEnvironmentTab();
+                    break;
+            }
+
+            GUILayout.EndVertical();
+            GUI.DragWindow();
+        }
+
+        private void DrawConsoleTab()
+        {
             // Console output area
-            _scrollPosition = GUILayout.BeginScrollView(_scrollPosition, GUILayout.Height(300));
+            _scrollPosition = GUILayout.BeginScrollView(_scrollPosition, GUILayout.Height(350));
             foreach (var line in _consoleOutput)
             {
                 GUILayout.Label(line);
@@ -49,9 +73,38 @@ namespace PEAK_Menu.Menu
                 ExecuteCommand();
             }
             GUILayout.EndHorizontal();
+        }
 
-            GUILayout.EndVertical();
-            GUI.DragWindow();
+        private void DrawPlayerTab()
+        {
+            var character = Character.localCharacter;
+            if (character == null)
+            {
+                GUILayout.Label("No character found");
+                return;
+            }
+
+            GUILayout.Label("=== Player Information ===");
+            GUILayout.Label($"Position: {character.Center}");
+            GUILayout.Label($"Health: {(1f - character.refs.afflictions.GetCurrentStatus(CharacterAfflictions.STATUSTYPE.Injury)) * 100:F1}%");
+            GUILayout.Label($"Stamina: {character.GetTotalStamina() * 100:F1}%");
+            
+            if (GUILayout.Button("Randomize Appearance"))
+            {
+                character.refs.customization.RandomizeCosmetics();
+            }
+        }
+
+        private void DrawEnvironmentTab()
+        {
+            GUILayout.Label("=== Environment ===");
+            
+            if (DayNightManager.instance != null)
+            {
+                GUILayout.Label($"Day Progress: {DayNightManager.instance.isDay * 100:F1}%");
+            }
+            
+            GUILayout.Label($"Night Cold Active: {Ascents.isNightCold}");
         }
 
         private void ExecuteCommand()

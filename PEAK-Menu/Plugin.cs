@@ -18,7 +18,7 @@ namespace PEAK_Menu
         public static PluginConfig PluginConfig { get; private set; }
         
         private Harmony _harmony;
-        private MenuManager _menuManager;
+        internal MenuManager _menuManager; // Made internal so commands can access it
 
         private void Awake()
         {

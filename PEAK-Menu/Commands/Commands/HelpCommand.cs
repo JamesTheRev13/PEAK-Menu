@@ -35,15 +35,15 @@ namespace PEAK_Menu.Commands
                 return;
             }
 
-            var sb = new StringBuilder();
-            sb.AppendLine("Available commands:");
+            LogInfo("Available commands:");
             
             foreach (var command in availableCommands.OrderBy(c => c.Name))
             {
-                sb.AppendLine($"  {command.Name} - {command.Description}");
+                LogInfo($"  {command.Name} - {command.Description}");
             }
             
-            LogInfo(sb.ToString());
+            LogInfo($"Total: {availableCommands.Count} commands");
+            LogInfo("Use 'help <command>' for detailed information");
         }
     }
 }
