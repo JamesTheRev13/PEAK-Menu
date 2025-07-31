@@ -244,18 +244,31 @@ Note: Use 'all' as player name to affect all players";
                 return;
             }
 
-            // Default to enabling if no boolean specified
-            bool enable = parsed.BooleanValue ?? true;
-
             foreach (var character in targets)
             {
                 if (character.IsLocal)
                 {
                     var currentState = character.infiniteStam;
+                    
+                    // FIXED: Determine the desired state properly
+                    bool enable;
+                    if (parsed.BooleanValue.HasValue)
+                    {
+                        // Explicit on/off provided
+                        enable = parsed.BooleanValue.Value;
+                    }
+                    else
+                    {
+                        // No explicit value, toggle current state
+                        enable = !currentState;
+                    }
+                    
+                    // Only change if different from current state
                     if (enable != currentState)
                     {
                         Character.InfiniteStamina(); // This toggles the state
                     }
+                    
                     LogInfo($"{(enable ? "Enabled" : "Disabled")} infinite stamina for: {character.characterName}");
                 }
                 else
@@ -281,17 +294,31 @@ Note: Use 'all' as player name to affect all players";
                 return;
             }
 
-            bool enable = parsed.BooleanValue ?? true;
-
             foreach (var character in targets)
             {
                 if (character.IsLocal)
                 {
                     var currentState = character.statusesLocked;
+                    
+                    // FIXED: Determine the desired state properly
+                    bool enable;
+                    if (parsed.BooleanValue.HasValue)
+                    {
+                        // Explicit on/off provided
+                        enable = parsed.BooleanValue.Value;
+                    }
+                    else
+                    {
+                        // No explicit value, toggle current state
+                        enable = !currentState;
+                    }
+                    
+                    // Only change if different from current state
                     if (enable != currentState)
                     {
                         Character.LockStatuses(); // This toggles the state
                     }
+                    
                     LogInfo($"{(enable ? "Enabled" : "Disabled")} god mode for: {character.characterName}");
                 }
                 else

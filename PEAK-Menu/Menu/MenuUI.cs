@@ -28,11 +28,67 @@ namespace PEAK_Menu.Menu
         private static string _targetPlayerName = "";
         private static float _statusValue = 0.5f;
 
+        // For tracking hover states - improved approach
+        private int _hoveredButtonId = -1;
+
         public MenuUI(MenuManager menuManager)
         {
             _menuManager = menuManager;
             _windowRect = new Rect(50, 50, 700, 500);
             _consoleOutput = new System.Collections.Generic.List<string>();
+        }
+
+        // Standardized toggle button method - FIXED
+        private bool DrawToggleButton(string featureName, bool isEnabled, float width = 0, int buttonId = -1)
+        {
+            // Check hover state properly
+            var controlRect = width > 0 ? GUILayoutUtility.GetRect(width, 20) : GUILayoutUtility.GetRect(GUIContent.none, GUI.skin.button);
+            var isHovered = controlRect.Contains(Event.current.mousePosition);
+            
+            // Update hover tracking
+            if (isHovered && Event.current.type == EventType.Repaint)
+            {
+                _hoveredButtonId = buttonId;
+            }
+            
+            // Determine button text based on hover state
+            string buttonText;
+            if (isHovered)
+            {
+                buttonText = isEnabled ? $"{featureName} - DISABLE" : $"{featureName} - ENABLE";
+            }
+            else
+            {
+                buttonText = isEnabled ? $"{featureName} - ON" : $"{featureName} - OFF";
+            }
+
+            // Set button color
+            var originalColor = GUI.backgroundColor;
+            GUI.backgroundColor = isEnabled ? Color.green : Color.gray;
+
+            // Draw the button using the calculated rect
+            bool clicked = GUI.Button(controlRect, buttonText);
+
+            GUI.backgroundColor = originalColor;
+            return clicked;
+        }
+
+        // Standardized toggle button with status label method - FIXED
+        private bool DrawToggleButtonWithStatus(string featureName, bool isEnabled, float buttonWidth = 130, float statusWidth = 120, int buttonId = -1)
+        {
+            GUILayout.BeginHorizontal();
+            
+            bool clicked = DrawToggleButton(featureName, isEnabled, buttonWidth, buttonId);
+            
+            var statusText = isEnabled ? "ENABLED" : "Disabled";
+            var statusColor = GUI.color;
+            GUI.color = isEnabled ? Color.green : Color.gray;
+            GUILayout.Label($"{featureName}: {statusText}", GUILayout.Width(statusWidth));
+            GUI.color = statusColor;
+            
+            GUILayout.EndHorizontal();
+            
+            return clicked;
         }
 
         public void OnGUI()
@@ -130,12 +186,6 @@ namespace PEAK_Menu.Menu
             }
             
             GUILayout.EndHorizontal();
-            
-            // Auto-focus console input when console tab is active
-            //if (_selectedTab == 0)
-            //{
-            //    GUI.FocusControl("ConsoleInput");
-            //}
         }
 
         private void DrawPlayerTab()
@@ -169,39 +219,29 @@ namespace PEAK_Menu.Menu
             var playerManager = _menuManager.GetPlayerManager();
             if (playerManager != null)
             {
-                // No Fall Damage
-                var originalColor = GUI.backgroundColor;
+                // No Fall Damage - Updated with standardized toggle and unique ID
                 var isNoFallEnabled = playerManager.NoFallDamageEnabled;
-                GUI.backgroundColor = isNoFallEnabled ? Color.green : Color.red;
-                
-                if (GUILayout.Button(isNoFallEnabled ? "No Fall Damage OFF" : "No Fall Damage ON"))
+                if (DrawToggleButton("No Fall Damage", isNoFallEnabled, 0, 101))
                 {
                     playerManager.SetNoFallDamage(!isNoFallEnabled);
                     AddToConsole($"[PLAYER] No fall damage {(!isNoFallEnabled ? "enabled" : "disabled")}");
                 }
-                GUI.backgroundColor = originalColor;
                 
-                // No Weight
+                // No Weight - Updated with standardized toggle and unique ID
                 var isNoWeightEnabled = playerManager.NoWeightEnabled;
-                GUI.backgroundColor = isNoWeightEnabled ? Color.green : Color.red;
-                
-                if (GUILayout.Button(isNoWeightEnabled ? "No Weight OFF" : "No Weight ON"))
+                if (DrawToggleButton("No Weight", isNoWeightEnabled, 0, 102))
                 {
                     playerManager.SetNoWeight(!isNoWeightEnabled);
                     AddToConsole($"[PLAYER] No weight {(!isNoWeightEnabled ? "enabled" : "disabled")}");
                 }
-                GUI.backgroundColor = originalColor;
                 
-                // Affliction Immunity
+                // Affliction Immunity - Updated with standardized toggle and unique ID
                 var isAfflictionImmune = playerManager.AfflictionImmunityEnabled;
-                GUI.backgroundColor = isAfflictionImmune ? Color.green : Color.red;
-                
-                if (GUILayout.Button(isAfflictionImmune ? "Affliction Immunity OFF" : "Affliction Immunity ON"))
+                if (DrawToggleButton("Affliction Immunity", isAfflictionImmune, 0, 103))
                 {
                     playerManager.SetAfflictionImmunity(!isAfflictionImmune);
                     AddToConsole($"[PLAYER] Affliction immunity {(!isAfflictionImmune ? "enabled" : "disabled")}");
                 }
-                GUI.backgroundColor = originalColor;
                 
                 GUILayout.Space(10);
                 
@@ -271,7 +311,7 @@ namespace PEAK_Menu.Menu
                 AddToConsole("[INFO] Player fully healed");
             }
 
-            // RAINBOW CONTROLS SECTION - ADDED!
+            // RAINBOW CONTROLS SECTION - Updated with standardized toggle
             GUILayout.Space(15);
             GUILayout.Label("=== Rainbow Effect ===");
             
@@ -280,12 +320,8 @@ namespace PEAK_Menu.Menu
             {
                 var isRainbowEnabled = rainbowManager.IsRainbowEnabled;
                 
-                // Rainbow status
-                GUILayout.Label($"Rainbow Mode: {(isRainbowEnabled ?  "ENABLED" : "Disabled")}");
-                
-                // Toggle button
-                var buttonText = isRainbowEnabled ? "Disable Rainbow" : "Enable Rainbow";
-                if (GUILayout.Button(buttonText))
+                // Rainbow toggle with standardized button and unique ID
+                if (DrawToggleButton("Rainbow Effect", isRainbowEnabled, 0, 104))
                 {
                     rainbowManager.ToggleRainbow();
                     AddToConsole($"[INFO] Rainbow effect {(rainbowManager.IsRainbowEnabled ? "enabled" : "disabled")}");
@@ -434,54 +470,27 @@ namespace PEAK_Menu.Menu
             }
             GUILayout.EndHorizontal();
 
-            // Self Admin Section - ENHANCED using AdminUIHelper
+            // Self Admin Section - FIXED with proper toggle buttons
             GUILayout.Space(10);
             GUILayout.Label("=== Self Administration ===");
             
-            // God Mode Toggle Button
-            GUILayout.BeginHorizontal();
+            // God Mode Toggle Button - FIXED with proper toggle logic
             var isGodModeEnabled = localCharacter.statusesLocked;
-            var godModeButtonText = isGodModeEnabled ? "God Mode OFF" : "God Mode ON";
-            var godModeButtonColor = isGodModeEnabled ? Color.red : Color.green;
-            
-            var originalColor = GUI.backgroundColor;
-            GUI.backgroundColor = godModeButtonColor;
-            
-            if (GUILayout.Button(godModeButtonText, GUILayout.Width(130)))
+            if (DrawToggleButtonWithStatus("God Mode", isGodModeEnabled, 130, 120, 201))
             {
                 AdminUIHelper.ExecuteQuickAction("god-mode", localCharacter.characterName);
                 AddToConsole($"[ADMIN] God mode {(!isGodModeEnabled ? "enabled" : "disabled")}");
             }
             
-            GUI.backgroundColor = originalColor;
-            
-            var godModeStatus = isGodModeEnabled ? "ENABLED" : "Disabled";
-            GUILayout.Label($"God Mode: {godModeStatus}", GUILayout.Width(120));
-            
-            GUILayout.EndHorizontal();
-            
-            // Infinite Stamina Toggle Button
-            GUILayout.BeginHorizontal();
+            // Infinite Stamina Toggle Button - FIXED with proper toggle logic
             var isInfiniteStamEnabled = localCharacter.infiniteStam;
-            var infiniteStamButtonText = isInfiniteStamEnabled ? "Infinite Stamina OFF" : "Infinite Stamina ON";
-            var infiniteStamButtonColor = isInfiniteStamEnabled ? Color.red : Color.green;
-            
-            GUI.backgroundColor = infiniteStamButtonColor;
-            
-            if (GUILayout.Button(infiniteStamButtonText, GUILayout.Width(160)))
+            if (DrawToggleButtonWithStatus("Infinite Stamina", isInfiniteStamEnabled, 160, 140, 202))
             {
                 AdminUIHelper.ExecuteQuickAction("infinite-stamina", localCharacter.characterName);
                 AddToConsole($"[ADMIN] Infinite stamina {(!isInfiniteStamEnabled ? "enabled" : "disabled")}");
             }
-            
-            GUI.backgroundColor = originalColor;
-            
-            var infiniteStamStatus = isInfiniteStamEnabled ? "ENABLED" : "Disabled";
-            GUILayout.Label($"Infinite Stamina: {infiniteStamStatus}", GUILayout.Width(120));
-            
-            GUILayout.EndHorizontal();
 
-            // NoClip controls - existing implementation stays the same
+            // NoClip controls - Updated with standardized toggles
             DrawNoClipControls();
 
             if (GUILayout.Button("Full Self Heal"))
@@ -515,28 +524,15 @@ namespace PEAK_Menu.Menu
             {
                 var isNoClipEnabled = noClipManager.IsNoClipEnabled;
                 
-                // NoClip toggle with hotkey info
-                GUILayout.BeginHorizontal();
-                var noClipButtonText = isNoClipEnabled ? "NoClip OFF" : "NoClip ON";
-                var noClipButtonColor = isNoClipEnabled ? Color.red : Color.green;
-                
-                var originalColor = GUI.backgroundColor;
-                GUI.backgroundColor = noClipButtonColor;
-                
-                if (GUILayout.Button(noClipButtonText, GUILayout.Width(100)))
+                // NoClip toggle with standardized button and status - FIXED
+                if (DrawToggleButtonWithStatus("NoClip", isNoClipEnabled, 100, 150, 203))
                 {
                     noClipManager.ToggleNoClip();
                     AddToConsole($"[ADMIN] NoClip {(noClipManager.IsNoClipEnabled ? "enabled" : "disabled")}");
                 }
                 
-                GUI.backgroundColor = originalColor;
-                
-                // Status display with hotkey
-                var statusText = isNoClipEnabled ? "ENABLED" : "Disabled";
                 var hotkeyText = Plugin.PluginConfig?.NoClipToggleKey?.Value.ToString() ?? "Delete";
-                GUILayout.Label($"NoClip: {statusText} (Hotkey: {hotkeyText})", GUILayout.Width(200));
-                
-                GUILayout.EndHorizontal();
+                GUILayout.Label($"Hotkey: {hotkeyText}");
                 
                 // Enhanced controls when enabled
                 if (isNoClipEnabled)
@@ -765,16 +761,33 @@ namespace PEAK_Menu.Menu
             var playerManager = _menuManager.GetPlayerManager();
             var noClipManager = _menuManager.GetNoClipManager();
             
+            // Use consistent color coding for status display
+            var greenColor = Color.green;
+            var grayColor = Color.gray;
+            var originalColor = GUI.color;
+            
+            GUI.color = localCharacter.statusesLocked ? greenColor : grayColor;
             GUILayout.Label($"God Mode: {(localCharacter.statusesLocked ? "ON" : "OFF")}");
+            
+            GUI.color = localCharacter.infiniteStam ? greenColor : grayColor;
             GUILayout.Label($"Infinite Stamina: {(localCharacter.infiniteStam ? "ON" : "OFF")}");
+            
+            GUI.color = (noClipManager?.IsNoClipEnabled == true) ? greenColor : grayColor;
             GUILayout.Label($"NoClip: {(noClipManager?.IsNoClipEnabled == true ? "ON" : "OFF")}");
             
             if (playerManager != null)
             {
+                GUI.color = playerManager.NoFallDamageEnabled ? greenColor : grayColor;
                 GUILayout.Label($"No Fall Damage: {(playerManager.NoFallDamageEnabled ? "ON" : "OFF")}");
+                
+                GUI.color = playerManager.NoWeightEnabled ? greenColor : grayColor;
                 GUILayout.Label($"No Weight: {(playerManager.NoWeightEnabled ? "ON" : "OFF")}");
+                
+                GUI.color = playerManager.AfflictionImmunityEnabled ? greenColor : grayColor;
                 GUILayout.Label($"Affliction Immunity: {(playerManager.AfflictionImmunityEnabled ? "ON" : "OFF")}");
             }
+            
+            GUI.color = originalColor;
             
             GUILayout.Space(10);
             GUILayout.Label("=== Hotkeys ===");
@@ -794,9 +807,6 @@ namespace PEAK_Menu.Menu
             AddToConsole($"> {_consoleInput}");
             _menuManager.ExecuteCommand(_consoleInput);
             _consoleInput = "";
-            
-            // Keep focus on console input after command execution
-            //GUI.FocusControl("ConsoleInput");
         }
 
         public void AddToConsole(string message)

@@ -13,8 +13,11 @@ namespace PEAK_Menu.Utils
             {
                 "heal-all" => "admin emergency-heal-all",
                 "list-all" => "admin list-players",
-                "god-mode" => $"admin god-mode \"{playerName ?? Character.localCharacter?.characterName}\"",
-                "infinite-stamina" => $"admin infinite-stamina \"{playerName ?? Character.localCharacter?.characterName}\"",
+                
+                // FIXED: God mode and infinite stamina now properly check current state
+                "god-mode" => GenerateToggleCommand("god-mode", playerName),
+                "infinite-stamina" => GenerateToggleCommand("infinite-stamina", playerName),
+                
                 "kill" => $"admin kill \"{playerName}\"",
                 "bring" => $"admin bring \"{playerName}\"",
                 "revive" => $"admin revive \"{playerName}\"",
@@ -28,6 +31,31 @@ namespace PEAK_Menu.Utils
             {
                 menuManager.ExecuteCommand(command);
             }
+        }
+
+        // NEW: Helper method to generate proper toggle commands
+        private static string GenerateToggleCommand(string commandType, string playerName)
+        {
+            var character = Character.localCharacter;
+            if (character == null) return null;
+
+            string targetPlayerName = playerName ?? character.characterName;
+            bool currentState = false;
+            
+            // Check current state based on command type
+            switch (commandType)
+            {
+                case "god-mode":
+                    currentState = character.statusesLocked;
+                    break;
+                case "infinite-stamina":
+                    currentState = character.infiniteStam;
+                    break;
+            }
+            
+            // Generate command with opposite state
+            string newState = currentState ? "off" : "on";
+            return $"admin {commandType} \"{targetPlayerName}\" {newState}";
         }
 
         public static void SetPlayerStatus(string playerName, string statusType, float value)
