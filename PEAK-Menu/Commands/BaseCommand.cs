@@ -4,6 +4,7 @@ namespace PEAK_Menu.Commands
     {
         public abstract string Name { get; }
         public abstract string Description { get; }
+        public abstract string DetailedHelp { get; } // Each command provides its own help
 
         public virtual bool CanExecute()
         {

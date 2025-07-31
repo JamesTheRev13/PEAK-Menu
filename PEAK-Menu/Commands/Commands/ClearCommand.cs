@@ -4,6 +4,13 @@ namespace PEAK_Menu.Commands
     {
         public override string Name => "clear";
         public override string Description => "Clears the console output";
+        public override string DetailedHelp =>
+@"=== CLEAR Command Help ===
+Clears the console output
+
+Usage: clear
+
+Removes all text from the console window";
 
         public override void Execute(string[] parameters)
         {
@@ -11,9 +18,11 @@ namespace PEAK_Menu.Commands
             var menuManager = Plugin.Instance?._menuManager;
             if (menuManager != null)
             {
-                // We'll need to add a ClearConsole method to MenuManager
                 menuManager.ClearConsole();
-                LogInfo("Console cleared");
+                // Don't use LogInfo here as it would immediately add to the cleared console
+                Plugin.Log.LogInfo("[clear] Console cleared");
+                // Add a simple message after clearing
+                menuManager.AddToConsole("Console cleared");
             }
             else
             {

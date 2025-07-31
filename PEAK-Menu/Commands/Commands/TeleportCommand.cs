@@ -6,12 +6,30 @@ namespace PEAK_Menu.Commands
     {
         public override string Name => "teleport";
         public override string Description => "Teleport to coordinates (x y z)";
+        
+        public override string DetailedHelp =>
+@"=== TELEPORT Command Help ===
+Teleport to specific coordinates
+
+Usage: teleport <x> <y> <z>
+
+Parameters:
+  x - X coordinate (float)
+  y - Y coordinate (float)
+  z - Z coordinate (float)
+
+Examples:
+  teleport 0 100 0
+  teleport -50.5 25.3 100.7
+
+Note: Cannot teleport while dead";
 
         public override void Execute(string[] parameters)
         {
             if (parameters.Length != 3)
             {
-                LogError("Usage: teleport <x> <y> <z>");
+                LogError("Invalid number of parameters");
+                LogInfo("Use 'help teleport' for usage information");
                 return;
             }
 
@@ -19,7 +37,8 @@ namespace PEAK_Menu.Commands
                 !float.TryParse(parameters[1], out float y) ||
                 !float.TryParse(parameters[2], out float z))
             {
-                LogError("Invalid coordinates. Use numbers only.");
+                LogError("Invalid coordinates - must be numbers");
+                LogInfo("Use 'help teleport' for usage information");
                 return;
             }
 
@@ -31,15 +50,12 @@ namespace PEAK_Menu.Commands
             }
 
             var targetPosition = new Vector3(x, y, z);
-            
-            // Use the game's warp system
             character.refs.view.RPC("WarpPlayerRPC", Photon.Pun.RpcTarget.All, targetPosition, true);
             LogInfo($"Teleported to {targetPosition}");
         }
 
         public override bool CanExecute()
         {
-            // Only allow teleporting if character exists and is not dead
             var character = Character.localCharacter;
             return character != null && !character.data.dead;
         }

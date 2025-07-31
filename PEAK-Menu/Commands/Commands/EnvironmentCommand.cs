@@ -5,6 +5,21 @@ namespace PEAK_Menu.Commands
         public override string Name => "environment";
         public override string Description => "Shows environment information";
 
+        public override string DetailedHelp =>
+@"=== ENVIRONMENT Command Help ===
+Shows environment and world information
+
+Usage: environment
+
+Displays:
+  - Day/night cycle progress
+  - Weather conditions (night cold)
+  - Game multipliers (hunger, fall damage, climb stamina)
+  - Character environmental state (fog, grounding, falling)
+
+Useful for monitoring current world conditions
+and understanding gameplay modifiers.";
+
         public override void Execute(string[] parameters)
         {
             LogInfo("=== Environment ===");

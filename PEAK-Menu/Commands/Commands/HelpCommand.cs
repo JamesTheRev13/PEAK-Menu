@@ -1,5 +1,4 @@
 using System.Linq;
-using System.Text;
 
 namespace PEAK_Menu.Commands
 {
@@ -9,6 +8,19 @@ namespace PEAK_Menu.Commands
 
         public override string Name => "help";
         public override string Description => "Shows available commands and their descriptions";
+        
+        public override string DetailedHelp => 
+@"=== HELP Command Help ===
+Shows command information and usage
+
+Usage:
+  help              - List all commands
+  help <command>    - Detailed help for specific command
+
+Examples:
+  help
+  help customize
+  help teleport";
 
         public HelpCommand(CommandManager commandManager)
         {
@@ -21,12 +33,13 @@ namespace PEAK_Menu.Commands
             
             if (parameters.Length > 0)
             {
-                var commandName = parameters[0];
+                var commandName = parameters[0].ToLower();
                 var command = _commandManager.GetCommand(commandName);
                 
                 if (command != null)
                 {
-                    LogInfo($"{command.Name}: {command.Description}");
+                    // Use the command's own detailed help
+                    LogInfo(command.DetailedHelp);
                 }
                 else
                 {

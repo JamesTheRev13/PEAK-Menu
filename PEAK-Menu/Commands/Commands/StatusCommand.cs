@@ -4,6 +4,22 @@ namespace PEAK_Menu.Commands
     {
         public override string Name => "status";
         public override string Description => "Shows detailed player status information";
+        
+        public override string DetailedHelp =>
+@"=== STATUS Command Help ===
+Shows detailed player status information
+
+Usage: status
+
+Displays:
+  - Health percentage
+  - Stamina percentage
+  - Hunger level
+  - Temperature (Cold/Hot)
+  - Poison level
+  - Position coordinates
+  - Movement state (grounded, climbing)
+  - Life state (passed out, dead)";
 
         public override void Execute(string[] parameters)
         {

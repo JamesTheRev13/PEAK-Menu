@@ -1,5 +1,6 @@
 using UnityEngine;
 using PEAK_Menu.Commands;
+using PEAK_Menu.Utils;
 
 namespace PEAK_Menu.Menu
 {
@@ -8,6 +9,7 @@ namespace PEAK_Menu.Menu
         private bool _isMenuOpen;
         private CommandManager _commandManager;
         private MenuUI _menuUI;
+        private RainbowManager _rainbowManager;
 
         public bool IsMenuOpen => _isMenuOpen;
 
@@ -17,6 +19,7 @@ namespace PEAK_Menu.Menu
             {
                 _commandManager = new CommandManager();
                 _menuUI = new MenuUI(this);
+                _rainbowManager = new RainbowManager();
                 Plugin.Log.LogInfo("Menu system initialized");
             }
             catch (System.Exception ex)
@@ -34,6 +37,9 @@ namespace PEAK_Menu.Menu
                 {
                     ToggleMenu();
                 }
+
+                // Update rainbow effect
+                _rainbowManager?.Update();
             }
             catch (System.Exception ex)
             {
@@ -57,6 +63,13 @@ namespace PEAK_Menu.Menu
         {
             _isMenuOpen = !_isMenuOpen;
             Plugin.Log.LogDebug($"Menu toggled: {_isMenuOpen}");
+            
+            if (_isMenuOpen)
+            {
+                AddToConsole($"=== {MyPluginInfo.PLUGIN_NAME} Menu Opened ===");
+                AddToConsole("Type 'help' for available commands");
+                AddToConsole("Press ESC to close menu");
+            }
         }
 
         public bool ExecuteCommand(string commandLine)
@@ -68,6 +81,7 @@ namespace PEAK_Menu.Menu
             catch (System.Exception ex)
             {
                 Plugin.Log.LogError($"Error executing command: {ex.Message}");
+                AddToConsole($"[ERROR] Failed to execute command: {ex.Message}");
                 return false;
             }
         }
@@ -82,10 +96,16 @@ namespace PEAK_Menu.Menu
             _menuUI?.ClearConsole();
         }
 
+        public RainbowManager GetRainbowManager()
+        {
+            return _rainbowManager;
+        }
+
         public void Cleanup()
         {
             try
             {
+                _rainbowManager?.DisableRainbow();
                 _commandManager?.Cleanup();
             }
             catch (System.Exception ex)
