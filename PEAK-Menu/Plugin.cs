@@ -1,12 +1,13 @@
 ﻿using BepInEx;
-using BepInEx.Configuration;
 using BepInEx.Logging;
 using HarmonyLib;
-using UnityEngine;
 using System.Reflection;
 using PEAK_Menu.Config;
 using PEAK_Menu.Menu;
-        
+
+// TODO: Investigate PointPinger (ReceivePoint_Rpc) for teleport to point functionality
+// TODO: Investigate CharacterAfflictions (UpdateWeight) for potential weight management
+
 namespace PEAK_Menu
 {
     // Plugin by Bob Saget
@@ -34,7 +35,7 @@ namespace PEAK_Menu
             // Apply Harmony patches
             _harmony = Harmony.CreateAndPatchAll(Assembly.GetExecutingAssembly(), MyPluginInfo.PLUGIN_GUID);
             
-            Log.LogInfo($"Plugin {MyPluginInfo.PLUGIN_NAME} {MyPluginInfo.PLUGIN_VERSION} is loaded!");
+            Log.LogInfo($"{MyPluginInfo.PLUGIN_NAME} v{MyPluginInfo.PLUGIN_VERSION} is loaded!");
         }
 
         private void Start()
@@ -56,7 +57,7 @@ namespace PEAK_Menu
         {
             _menuManager?.Cleanup();
             _harmony?.UnpatchSelf();
-            Log.LogInfo($"Plugin {MyPluginInfo.PLUGIN_NAME} {MyPluginInfo.PLUGIN_VERSION} is unloaded!");
+            Log.LogInfo($"{MyPluginInfo.PLUGIN_NAME} v{MyPluginInfo.PLUGIN_VERSION} is unloaded!");
         }
     }
 }

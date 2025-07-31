@@ -1,5 +1,6 @@
 using System.Linq;
 using UnityEngine;
+using PEAK_Menu.Utils;
 
 namespace PEAK_Menu.Commands
 {
@@ -62,45 +63,45 @@ Note: Use 'all' as player name to affect all players";
                 return;
             }
 
-            var command = parameters[0].ToLower();
+            var parsed = ParameterParser.ParseSubCommand(parameters);
             
-            switch (command)
+            switch (parsed.Action)
             {
                 case "heal":
-                    HandleHealCommand(parameters);
+                    HandleHealCommand(parsed);
                     break;
                 case "revive":
-                    HandleReviveCommand(parameters);
+                    HandleReviveCommand(parsed);
                     break;
                 case "rescue":
-                    HandleRescueCommand(parameters);
+                    HandleRescueCommand(parsed);
                     break;
                 case "goto":
-                    HandleGotoCommand(parameters);
+                    HandleGotoCommand(parsed);
                     break;
                 case "hunger":
-                    HandleHungerCommand(parameters);
+                    HandleHungerCommand(parsed);
                     break;
                 case "stamina":
-                    HandleStaminaCommand(parameters);
+                    HandleStaminaCommand(parsed);
                     break;
                 case "health":
-                    HandleHealthCommand(parameters);
+                    HandleHealthCommand(parsed);
                     break;
                 case "clear-status":
-                    HandleClearStatusCommand(parameters);
+                    HandleClearStatusCommand(parsed);
                     break;
                 case "infinite-stamina":
-                    HandleInfiniteStaminaCommand(parameters);
+                    HandleInfiniteStaminaCommand(parsed);
                     break;
                 case "god-mode":
-                    HandleGodModeCommand(parameters);
+                    HandleGodModeCommand(parsed);
                     break;
                 case "no-hunger":
-                    HandleNoHungerCommand(parameters);
+                    HandleNoHungerCommand(parsed);
                     break;
                 case "spectate":
-                    HandleSpectateCommand(parameters);
+                    HandleSpectateCommand(parsed);
                     break;
                 case "list-players":
                     HandleListPlayersCommand();
@@ -112,25 +113,194 @@ Note: Use 'all' as player name to affect all players";
                     HandleResetWorldCommand();
                     break;
                 case "noclip":
-                    HandleNoClipCommand(parameters);
+                    HandleNoClipCommand(parsed);
                     break;
                 default:
-                    LogError($"Unknown admin command: {command}");
+                    LogError($"Unknown admin command: {parsed.Action}");
                     LogInfo("Use 'help admin' for available options");
                     break;
             }
         }
 
-        private void HandleHealCommand(string[] parameters)
+        private void HandleStaminaCommand(ParameterParser.ParsedParameters parsed)
         {
-            if (parameters.Length < 2)
+            if (string.IsNullOrEmpty(parsed.PlayerName))
+            {
+                LogError("Usage: admin stamina <player> <0-1>");
+                return;
+            }
+
+            if (!ParameterParser.ValidateNumericRange(parsed.NumericValue, 0f, 1f, out string error))
+            {
+                LogError($"Invalid stamina level: {error}");
+                return;
+            }
+
+            var targets = ParameterParser.GetTargetPlayers(parsed.PlayerName, out string playerError);
+            if (!string.IsNullOrEmpty(playerError))
+            {
+                LogError(playerError);
+                return;
+            }
+
+            var staminaLevel = parsed.NumericValue.Value;
+
+            foreach (var character in targets)
+            {
+                character.data.currentStamina = staminaLevel;
+                character.ClampStamina();
+                LogInfo($"Set {character.characterName}'s stamina to {staminaLevel * 100:F0}%");
+            }
+        }
+
+        private void HandleHealthCommand(ParameterParser.ParsedParameters parsed)
+        {
+            if (string.IsNullOrEmpty(parsed.PlayerName))
+            {
+                LogError("Usage: admin health <player> <0-1>");
+                return;
+            }
+
+            if (!ParameterParser.ValidateNumericRange(parsed.NumericValue, 0f, 1f, out string error))
+            {
+                LogError($"Invalid health level: {error}");
+                return;
+            }
+
+            var targets = ParameterParser.GetTargetPlayers(parsed.PlayerName, out string playerError);
+            if (!string.IsNullOrEmpty(playerError))
+            {
+                LogError(playerError);
+                return;
+            }
+
+            var healthLevel = parsed.NumericValue.Value;
+            var injuryLevel = 1f - healthLevel;
+
+            foreach (var character in targets)
+            {
+                character.refs.afflictions.SetStatus(CharacterAfflictions.STATUSTYPE.Injury, injuryLevel);
+                LogInfo($"Set {character.characterName}'s health to {healthLevel * 100:F0}%");
+            }
+        }
+
+        private void HandleHungerCommand(ParameterParser.ParsedParameters parsed)
+        {
+            if (string.IsNullOrEmpty(parsed.PlayerName))
+            {
+                LogError("Usage: admin hunger <player> <0-1>");
+                return;
+            }
+
+            if (!ParameterParser.ValidateNumericRange(parsed.NumericValue, 0f, 1f, out string error))
+            {
+                LogError($"Invalid hunger level: {error}");
+                return;
+            }
+
+            var targets = ParameterParser.GetTargetPlayers(parsed.PlayerName, out string playerError);
+            if (!string.IsNullOrEmpty(playerError))
+            {
+                LogError(playerError);
+                return;
+            }
+
+            var hungerLevel = parsed.NumericValue.Value;
+
+            foreach (var character in targets)
+            {
+                character.refs.afflictions.SetStatus(CharacterAfflictions.STATUSTYPE.Hunger, hungerLevel);
+                LogInfo($"Set {character.characterName}'s hunger to {hungerLevel * 100:F0}%");
+            }
+        }
+
+        private void HandleInfiniteStaminaCommand(ParameterParser.ParsedParameters parsed)
+        {
+            if (string.IsNullOrEmpty(parsed.PlayerName))
+            {
+                LogError("Usage: admin infinite-stamina <player> [on/off]");
+                return;
+            }
+
+            var targets = ParameterParser.GetTargetPlayers(parsed.PlayerName, out string playerError);
+            if (!string.IsNullOrEmpty(playerError))
+            {
+                LogError(playerError);
+                return;
+            }
+
+            // Default to enabling if no boolean specified
+            bool enable = parsed.BooleanValue ?? true;
+
+            foreach (var character in targets)
+            {
+                if (character.IsLocal)
+                {
+                    var currentState = character.infiniteStam;
+                    if (enable != currentState)
+                    {
+                        Character.InfiniteStamina(); // This toggles the state
+                    }
+                    LogInfo($"{(enable ? "Enabled" : "Disabled")} infinite stamina for: {character.characterName}");
+                }
+                else
+                {
+                    LogWarning($"Cannot set infinite stamina for remote player: {character.characterName}");
+                    LogInfo("This feature only works for the local player");
+                }
+            }
+        }
+
+        private void HandleGodModeCommand(ParameterParser.ParsedParameters parsed)
+        {
+            if (string.IsNullOrEmpty(parsed.PlayerName))
+            {
+                LogError("Usage: admin god-mode <player> [on/off]");
+                return;
+            }
+
+            var targets = ParameterParser.GetTargetPlayers(parsed.PlayerName, out string playerError);
+            if (!string.IsNullOrEmpty(playerError))
+            {
+                LogError(playerError);
+                return;
+            }
+
+            bool enable = parsed.BooleanValue ?? true;
+
+            foreach (var character in targets)
+            {
+                if (character.IsLocal)
+                {
+                    var currentState = character.statusesLocked;
+                    if (enable != currentState)
+                    {
+                        Character.LockStatuses(); // This toggles the state
+                    }
+                    LogInfo($"{(enable ? "Enabled" : "Disabled")} god mode for: {character.characterName}");
+                }
+                else
+                {
+                    LogWarning($"Cannot set god mode for remote player: {character.characterName}");
+                    LogInfo("This feature only works for the local player");
+                }
+            }
+        }
+
+        private void HandleHealCommand(ParameterParser.ParsedParameters parsed)
+        {
+            if (string.IsNullOrEmpty(parsed.PlayerName))
             {
                 LogError("Usage: admin heal <player>");
                 return;
             }
 
-            var playerName = string.Join(" ", parameters.Skip(1));
-            var targets = GetTargetPlayers(playerName);
+            var targets = ParameterParser.GetTargetPlayers(parsed.PlayerName, out string error);
+            if (!string.IsNullOrEmpty(error))
+            {
+                LogError(error);
+                return;
+            }
 
             foreach (var character in targets)
             {
@@ -149,25 +319,57 @@ Note: Use 'all' as player name to affect all players";
             }
         }
 
-        private void HandleReviveCommand(string[] parameters)
+        private void HandleReviveCommand(ParameterParser.ParsedParameters parsed)
         {
-            if (parameters.Length < 2)
+            if (string.IsNullOrEmpty(parsed.PlayerName))
             {
                 LogError("Usage: admin revive <player>");
                 return;
             }
 
-            var playerName = string.Join(" ", parameters.Skip(1));
-            var targets = GetTargetPlayers(playerName);
+            var targets = ParameterParser.GetTargetPlayers(parsed.PlayerName, out string error);
+            if (!string.IsNullOrEmpty(error))
+            {
+                LogError(error);
+                return;
+            }
 
             foreach (var character in targets)
             {
                 if (character.data.dead || character.data.fullyPassedOut)
                 {
-                    // Revive at safe location (near local player)
-                    var safePos = Character.localCharacter.Center + Vector3.up * 2f;
-                    character.refs.view.RPC("RPCA_ReviveAtPosition", Photon.Pun.RpcTarget.All, safePos, true);
-                    LogInfo($"Revived player: {character.characterName}");
+                    try
+                    {
+                        // Get safe revive position near local player
+                        var localPlayer = Character.localCharacter;
+                        Vector3 revivePos = localPlayer != null ? localPlayer.Center + Vector3.forward * 2f : character.Center;
+                        
+                        // Use reflection to call RPCA_ReviveAtPosition if available
+                        var reviveMethod = typeof(Character).GetMethod("RPCA_ReviveAtPosition", 
+                            System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic);
+                        
+                        if (reviveMethod != null)
+                        {
+                            reviveMethod.Invoke(character, new object[] { revivePos, true });
+                        }
+                        else
+                        {
+                            // Fallback to basic revive
+                            var basicReviveMethod = typeof(Character).GetMethod("RPCA_Revive", 
+                                System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic);
+                            
+                            if (basicReviveMethod != null)
+                            {
+                                basicReviveMethod.Invoke(character, new object[] { true });
+                            }
+                        }
+                        
+                        LogInfo($"Revived player: {character.characterName}");
+                    }
+                    catch (System.Exception ex)
+                    {
+                        LogError($"Failed to revive {character.characterName}: {ex.Message}");
+                    }
                 }
                 else
                 {
@@ -176,406 +378,242 @@ Note: Use 'all' as player name to affect all players";
             }
         }
 
-        private void HandleRescueCommand(string[] parameters)
+        private void HandleRescueCommand(ParameterParser.ParsedParameters parsed)
         {
-            if (parameters.Length < 2)
+            if (string.IsNullOrEmpty(parsed.PlayerName))
             {
                 LogError("Usage: admin rescue <player>");
                 return;
             }
 
-            var playerName = string.Join(" ", parameters.Skip(1));
-            var targets = GetTargetPlayers(playerName);
-            var localCharacter = Character.localCharacter;
+            var targets = ParameterParser.GetTargetPlayers(parsed.PlayerName, out string error);
+            if (!string.IsNullOrEmpty(error))
+            {
+                LogError(error);
+                return;
+            }
+
+            var localPlayer = Character.localCharacter;
+            if (localPlayer == null)
+            {
+                LogError("Cannot rescue: Local player not found");
+                return;
+            }
+
+            Vector3 rescuePosition = localPlayer.Center + localPlayer.data.lookDirection * 3f;
 
             foreach (var character in targets)
             {
-                var rescuePos = localCharacter.Center + localCharacter.data.lookDirection_Right * 3f;
-                rescuePos.y += 1f; // Ensure above ground
-                
-                character.refs.view.RPC("WarpPlayerRPC", Photon.Pun.RpcTarget.All, rescuePos, true);
-                LogInfo($"Rescued player {character.characterName} to your location");
+                if (character == localPlayer)
+                {
+                    LogWarning("Cannot rescue yourself");
+                    continue;
+                }
+
+                try
+                {
+                    // Teleport player to rescue position
+                    var warpMethod = typeof(Character).GetMethod("WarpPlayerRPC", 
+                        System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic);
+                    
+                    if (warpMethod != null)
+                    {
+                        warpMethod.Invoke(character, new object[] { rescuePosition, true });
+                        LogInfo($"Rescued player {character.characterName} to your location");
+                    }
+                    else
+                    {
+                        LogError($"Could not rescue {character.characterName}: Teleport method not found");
+                    }
+                }
+                catch (System.Exception ex)
+                {
+                    LogError($"Failed to rescue {character.characterName}: {ex.Message}");
+                }
             }
         }
 
-        private void HandleGotoCommand(string[] parameters)
+        private void HandleGotoCommand(ParameterParser.ParsedParameters parsed)
         {
-            if (parameters.Length < 2)
+            if (string.IsNullOrEmpty(parsed.PlayerName))
             {
                 LogError("Usage: admin goto <player>");
                 return;
             }
 
-            var playerName = string.Join(" ", parameters.Skip(1));
-            var character = FindPlayerByName(playerName);
-            
-            if (character == null)
+            var targets = ParameterParser.GetTargetPlayers(parsed.PlayerName, out string error);
+            if (!string.IsNullOrEmpty(error))
             {
-                LogError($"Player '{playerName}' not found");
+                LogError(error);
                 return;
             }
 
-            var targetPos = character.Center + character.data.lookDirection_Right * 2f;
-            targetPos.y += 1f;
-            
-            var localCharacter = Character.localCharacter;
-            localCharacter.refs.view.RPC("WarpPlayerRPC", Photon.Pun.RpcTarget.All, targetPos, true);
-            LogInfo($"Teleported to player: {character.characterName}");
-        }
-
-        private void HandleStaminaCommand(string[] parameters)
-        {
-            if (parameters.Length < 3)
+            var localPlayer = Character.localCharacter;
+            if (localPlayer == null)
             {
-                LogError("Usage: admin stamina <player> <0-1>");
+                LogError("Cannot teleport: Local player not found");
                 return;
             }
 
-            if (!float.TryParse(parameters[parameters.Length - 1], out float staminaLevel))
+            var target = targets.FirstOrDefault();
+            if (target == null)
             {
-                LogError("Invalid stamina level. Use 0-1 (0=empty, 1=full)");
+                LogError("No target player found");
                 return;
             }
 
-            var playerName = string.Join(" ", parameters.Skip(1).Take(parameters.Length - 2));
-            var targets = GetTargetPlayers(playerName);
-
-            staminaLevel = UnityEngine.Mathf.Clamp01(staminaLevel);
-
-            foreach (var character in targets)
+            if (target == localPlayer)
             {
-                character.data.currentStamina = staminaLevel;
-                character.ClampStamina();
-                LogInfo($"Set {character.characterName}'s stamina to {staminaLevel * 100:F0}%");
-            }
-        }
-
-        private void HandleHealthCommand(string[] parameters)
-        {
-            if (parameters.Length < 3)
-            {
-                LogError("Usage: admin health <player> <0-1>");
+                LogWarning("Cannot teleport to yourself");
                 return;
             }
 
-            if (!float.TryParse(parameters[parameters.Length - 1], out float healthLevel))
+            try
             {
-                LogError("Invalid health level. Use 0-1 (0=dead, 1=full)");
-                return;
+                Vector3 targetPosition = target.Center + Vector3.back * 2f; // Position slightly behind target
+                
+                var warpMethod = typeof(Character).GetMethod("WarpPlayerRPC", 
+                    System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic);
+                
+                if (warpMethod != null)
+                {
+                    warpMethod.Invoke(localPlayer, new object[] { targetPosition, true });
+                    LogInfo($"Teleported to {target.characterName}");
+                }
+                else
+                {
+                    LogError("Could not teleport: Teleport method not found");
+                }
             }
-
-            var playerName = string.Join(" ", parameters.Skip(1).Take(parameters.Length - 2));
-            var targets = GetTargetPlayers(playerName);
-
-            healthLevel = UnityEngine.Mathf.Clamp01(healthLevel);
-
-            foreach (var character in targets)
+            catch (System.Exception ex)
             {
-                var injuryLevel = 1f - healthLevel;
-                character.refs.afflictions.SetStatus(CharacterAfflictions.STATUSTYPE.Injury, injuryLevel);
-                LogInfo($"Set {character.characterName}'s health to {healthLevel * 100:F0}%");
+                LogError($"Failed to teleport to {target.characterName}: {ex.Message}");
             }
         }
 
-        private void HandleHungerCommand(string[] parameters)
+        private void HandleClearStatusCommand(ParameterParser.ParsedParameters parsed)
         {
-            if (parameters.Length < 3)
-            {
-                LogError("Usage: admin hunger <player> <0-1>");
-                return;
-            }
-
-            if (!float.TryParse(parameters[parameters.Length - 1], out float hungerLevel))
-            {
-                LogError("Invalid hunger level. Use 0-1 (0=none, 1=starving)");
-                return;
-            }
-
-            var playerName = string.Join(" ", parameters.Skip(1).Take(parameters.Length - 2));
-            var targets = GetTargetPlayers(playerName);
-
-            hungerLevel = UnityEngine.Mathf.Clamp01(hungerLevel);
-
-            foreach (var character in targets)
-            {
-                character.refs.afflictions.SetStatus(CharacterAfflictions.STATUSTYPE.Hunger, hungerLevel);
-                LogInfo($"Set {character.characterName}'s hunger to {hungerLevel * 100:F0}%");
-            }
-        }
-
-        private void HandleClearStatusCommand(string[] parameters)
-        {
-            if (parameters.Length < 2)
+            if (string.IsNullOrEmpty(parsed.PlayerName))
             {
                 LogError("Usage: admin clear-status <player>");
                 return;
             }
 
-            var playerName = string.Join(" ", parameters.Skip(1));
-            var targets = GetTargetPlayers(playerName);
-
-            foreach (var character in targets)
+            var targets = ParameterParser.GetTargetPlayers(parsed.PlayerName, out string error);
+            if (!string.IsNullOrEmpty(error))
             {
-                character.refs.afflictions.ClearAllStatus(excludeCurse: false);
-                LogInfo($"Cleared all status effects for: {character.characterName}");
-            }
-        }
-
-        private void HandleInfiniteStaminaCommand(string[] parameters)
-        {
-            if (parameters.Length < 2)
-            {
-                LogError("Usage: admin infinite-stamina <player> [on/off]");
+                LogError(error);
                 return;
             }
 
-            var enable = true;
-            var playerName = string.Join(" ", parameters.Skip(1));
-
-            // Check if last parameter is on/off
-            if (parameters.Length > 2)
-            {
-                var lastParam = parameters[parameters.Length - 1].ToLower();
-                if (lastParam == "off" || lastParam == "false" || lastParam == "0")
-                {
-                    enable = false;
-                    playerName = string.Join(" ", parameters.Skip(1).Take(parameters.Length - 2));
-                }
-                else if (lastParam == "on" || lastParam == "true" || lastParam == "1")
-                {
-                    enable = true;
-                    playerName = string.Join(" ", parameters.Skip(1).Take(parameters.Length - 2));
-                }
-            }
-
-            var targets = GetTargetPlayers(playerName);
-
             foreach (var character in targets)
             {
-                // Use the existing console command method instead of reflection
-                if (character.IsLocal)
+                try
                 {
-                    // For local character, we can use the static method directly
-                    var currentState = character.infiniteStam;
-                    if (enable != currentState)
-                    {
-                        Character.InfiniteStamina(); // This toggles the state
-                    }
+                    character.refs.afflictions.ClearAllStatus(excludeCurse: false);
+                    LogInfo($"Cleared all status effects for: {character.characterName}");
                 }
-                else
+                catch (System.Exception ex)
                 {
-                    // For remote characters, we need to use RPC or direct access
-                    // Since infiniteStam has a private setter, we'll try the console command approach
-                    LogWarning($"Cannot set infinite stamina for remote player: {character.characterName}");
-                    LogInfo("This feature only works for the local player");
-                    continue;
+                    LogError($"Failed to clear status for {character.characterName}: {ex.Message}");
                 }
-
-                LogInfo($"{(enable ? "Enabled" : "Disabled")} infinite stamina for: {character.characterName}");
             }
         }
 
-        private void HandleGodModeCommand(string[] parameters)
+        private void HandleNoHungerCommand(ParameterParser.ParsedParameters parsed)
         {
-            if (parameters.Length < 2)
-            {
-                LogError("Usage: admin god-mode <player> [on/off]");
-                return;
-            }
-
-            var enable = true;
-            var playerName = string.Join(" ", parameters.Skip(1));
-
-            if (parameters.Length > 2)
-            {
-                var lastParam = parameters[parameters.Length - 1].ToLower();
-                if (lastParam == "off" || lastParam == "false" || lastParam == "0")
-                {
-                    enable = false;
-                    playerName = string.Join(" ", parameters.Skip(1).Take(parameters.Length - 2));
-                }
-                else if (lastParam == "on" || lastParam == "true" || lastParam == "1")
-                {
-                    enable = true;
-                    playerName = string.Join(" ", parameters.Skip(1).Take(parameters.Length - 2));
-                }
-            }
-
-            var targets = GetTargetPlayers(playerName);
-
-            foreach (var character in targets)
-            {
-                // Use the existing console command method
-                if (character.IsLocal)
-                {
-                    var currentState = character.statusesLocked;
-                    if (enable != currentState)
-                    {
-                        Character.LockStatuses(); // This toggles the state
-                    }
-                }
-                else
-                {
-                    LogWarning($"Cannot set god mode for remote player: {character.characterName}");
-                    LogInfo("This feature only works for the local player");
-                    continue;
-                }
-
-                LogInfo($"{(enable ? "Enabled" : "Disabled")} god mode for: {character.characterName}");
-            }
+            LogWarning("No-hunger command is not implemented yet");
+            LogInfo("This feature would require additional game modifications");
         }
 
-        private void HandleNoHungerCommand(string[] parameters)
+        private void HandleSpectateCommand(ParameterParser.ParsedParameters parsed)
         {
-            // For now, we'll just set hunger to 0 and advise to use god-mode for permanent effect
-            if (parameters.Length < 2)
-            {
-                LogError("Usage: admin no-hunger <player>");
-                return;
-            }
-
-            var playerName = string.Join(" ", parameters.Skip(1));
-            var targets = GetTargetPlayers(playerName);
-
-            foreach (var character in targets)
-            {
-                character.refs.afflictions.SetStatus(CharacterAfflictions.STATUSTYPE.Hunger, 0f);
-                LogInfo($"Removed hunger for: {character.characterName}");
-                LogInfo("Tip: Use 'admin god-mode' for permanent immunity");
-            }
-        }
-
-        private void HandleSpectateCommand(string[] parameters)
-        {
-            LogInfo("Spectate mode not implemented yet");
-            LogInfo("Use 'admin goto <player>' to follow players manually");
+            LogWarning("Spectate command is not implemented yet");
+            LogInfo("This feature would require camera system modifications");
         }
 
         private void HandleListPlayersCommand()
         {
             var allCharacters = Character.AllCharacters;
-            
-            LogInfo("=== Admin Player List ===");
-            
-            foreach (var character in allCharacters.OrderBy(c => c.characterName))
+            if (allCharacters == null || !allCharacters.Any())
             {
+                LogInfo("No players found");
+                return;
+            }
+
+            LogInfo("=== All Players ===");
+            for (int i = 0; i < allCharacters.Count; i++)
+            {
+                var character = allCharacters[i];
                 if (character == null) continue;
-                
+
                 var status = character.data.dead ? "DEAD" : 
                            character.data.passedOut ? "PASSED OUT" : 
-                           character.data.isClimbingAnything ? "CLIMBING" : "OK";
+                           character.data.fullyPassedOut ? "UNCONSCIOUS" : "ALIVE";
                 
-                var health = (1f - character.refs.afflictions.GetCurrentStatus(CharacterAfflictions.STATUSTYPE.Injury)) * 100;
-                var stamina = character.GetTotalStamina() * 100;
-                var hunger = character.refs.afflictions.GetCurrentStatus(CharacterAfflictions.STATUSTYPE.Hunger) * 100;
+                var health = (1f - character.refs.afflictions.GetCurrentStatus(CharacterAfflictions.STATUSTYPE.Injury)) * 100f;
+                var stamina = character.GetTotalStamina() * 100f;
                 
-                LogInfo($"{character.characterName} [{status}]");
-                LogInfo($"  Health: {health:F0}% | Stamina: {stamina:F0}% | Hunger: {hunger:F0}%");
-                LogInfo($"  Pos: ({character.Center.x:F1}, {character.Center.y:F1}, {character.Center.z:F1})");
-                LogInfo($"  God: {character.statusesLocked} | InfStam: {character.infiniteStam}");
+                LogInfo($"{i + 1}. {character.characterName} - {status}");
+                LogInfo($"   Health: {health:F0}% | Stamina: {stamina:F0}% | Position: {character.Center}");
             }
         }
 
         private void HandleEmergencyHealAllCommand()
         {
             var allCharacters = Character.AllCharacters;
+            if (allCharacters == null || !allCharacters.Any())
+            {
+                LogInfo("No players found to heal");
+                return;
+            }
+
             int healedCount = 0;
-            
             foreach (var character in allCharacters)
             {
                 if (character == null) continue;
-                
-                // Full heal
-                character.refs.afflictions.ClearAllStatus(excludeCurse: false);
-                character.AddStamina(1f);
-                healedCount++;
+
+                try
+                {
+                    // Full heal
+                    character.refs.afflictions.SetStatus(CharacterAfflictions.STATUSTYPE.Injury, 0f);
+                    character.refs.afflictions.SetStatus(CharacterAfflictions.STATUSTYPE.Hunger, 0f);
+                    character.refs.afflictions.SetStatus(CharacterAfflictions.STATUSTYPE.Cold, 0f);
+                    character.refs.afflictions.SetStatus(CharacterAfflictions.STATUSTYPE.Hot, 0f);
+                    character.refs.afflictions.SetStatus(CharacterAfflictions.STATUSTYPE.Poison, 0f);
+                    character.refs.afflictions.SetStatus(CharacterAfflictions.STATUSTYPE.Drowsy, 0f);
+                    character.AddStamina(1f);
+                    
+                    // Revive if dead
+                    if (character.data.dead || character.data.fullyPassedOut)
+                    {
+                        var reviveMethod = typeof(Character).GetMethod("RPCA_Revive", 
+                            System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic);
+                        
+                        if (reviveMethod != null)
+                        {
+                            reviveMethod.Invoke(character, new object[] { true });
+                        }
+                    }
+                    
+                    healedCount++;
+                }
+                catch (System.Exception ex)
+                {
+                    LogError($"Failed to heal {character.characterName}: {ex.Message}");
+                }
             }
-            
-            LogInfo($"EMERGENCY: Healed all {healedCount} players");
+
+            LogInfo($"Emergency heal completed: {healedCount} players healed");
         }
 
         private void HandleResetWorldCommand()
         {
-            LogInfo("World reset capabilities limited");
-            LogInfo("Available resets:");
-            LogInfo("- Use 'admin emergency-heal-all' to heal everyone");
-            LogInfo("- Individual player management available");
+            LogWarning("Reset-world command is not implemented yet");
+            LogInfo("This feature would require extensive world state modifications");
         }
 
-        private System.Collections.Generic.List<Character> GetTargetPlayers(string playerName)
-        {
-            var results = new System.Collections.Generic.List<Character>();
-            
-            // Remove surrounding quotes if they exist
-            playerName = playerName.Trim();
-            if (playerName.StartsWith("\"") && playerName.EndsWith("\""))
-            {
-                playerName = playerName.Substring(1, playerName.Length - 2);
-            }
-            else if (playerName.StartsWith("'") && playerName.EndsWith("'"))
-            {
-                playerName = playerName.Substring(1, playerName.Length - 2);
-            }
-            
-            if (playerName.ToLower() == "all")
-            {
-                results.AddRange(Character.AllCharacters.Where(c => c != null));
-            }
-            else
-            {
-                var character = FindPlayerByName(playerName);
-                if (character != null)
-                {
-                    results.Add(character);
-                }
-                else
-                {
-                    LogError($"Player '{playerName}' not found");
-                }
-            }
-            
-            return results;
-        }
-
-        private Character FindPlayerByName(string playerName)
-        {
-            if (string.IsNullOrWhiteSpace(playerName))
-                return null;
-
-            // Remove surrounding quotes if they exist
-            playerName = playerName.Trim();
-            if (playerName.StartsWith("\"") && playerName.EndsWith("\""))
-            {
-                playerName = playerName.Substring(1, playerName.Length - 2);
-            }
-            else if (playerName.StartsWith("'") && playerName.EndsWith("'"))
-            {
-                playerName = playerName.Substring(1, playerName.Length - 2);
-            }
-
-            var allCharacters = Character.AllCharacters;
-            
-            // Try exact match first (case-insensitive)
-            var exactMatch = allCharacters.FirstOrDefault(c => 
-                string.Equals(c.characterName, playerName, System.StringComparison.OrdinalIgnoreCase));
-            
-            if (exactMatch != null)
-                return exactMatch;
-
-            // Try partial match (contains)
-            var partialMatch = allCharacters.FirstOrDefault(c => 
-                c.characterName.ToLower().Contains(playerName.ToLower()));
-            
-            if (partialMatch != null)
-            {
-                LogInfo($"Found partial match: '{partialMatch.characterName}'");
-                return partialMatch;
-            }
-
-            return null;
-        }
-
-        private void HandleNoClipCommand(string[] parameters)
+        private void HandleNoClipCommand(ParameterParser.ParsedParameters parsed)
         {
             var noClipManager = Plugin.Instance?._menuManager?.GetNoClipManager();
             if (noClipManager == null)
@@ -584,7 +622,7 @@ Note: Use 'all' as player name to affect all players";
                 return;
             }
 
-            if (parameters.Length == 1)
+            if (parsed.RemainingParameters.Length == 0)
             {
                 // Just "admin noclip" - toggle
                 noClipManager.ToggleNoClip();
@@ -592,7 +630,7 @@ Note: Use 'all' as player name to affect all players";
                 return;
             }
 
-            var subCommand = parameters[1].ToLower();
+            var subCommand = parsed.RemainingParameters[0].ToLower();
             
             switch (subCommand)
             {
@@ -627,41 +665,40 @@ Note: Use 'all' as player name to affect all players";
                     break;
                     
                 case "speed":
-                    if (parameters.Length < 3)
+                    if (parsed.RemainingParameters.Length < 2)
                     {
                         LogError("Usage: admin noclip speed <value>");
-                        LogInfo($"Current speed: {noClipManager.NoClipSpeed:F1}");
+                        LogInfo($"Current speed: {noClipManager.VerticalForce:F1}");
                         return;
                     }
                     
-                    if (float.TryParse(parameters[2], out float speed))
+                    if (float.TryParse(parsed.RemainingParameters[1], out float speed))
                     {
-                        noClipManager.SetNoClipSpeed(speed);
+                        noClipManager.SetVerticalForce(speed);
                         LogInfo($"NoClip speed set to: {speed:F1}");
                     }
                     else
                     {
-                        LogError("Invalid speed value. Use a number between 1-100");
+                        LogError("Invalid speed value. Use a number between 100-2000");
                     }
                     break;
                     
                 case "fast":
-                case "fastspeed":
-                    if (parameters.Length < 3)
+                    if (parsed.RemainingParameters.Length < 2)
                     {
                         LogError("Usage: admin noclip fast <value>");
-                        LogInfo($"Current fast speed: {noClipManager.NoClipFastSpeed:F1}");
+                        LogInfo($"Current fast speed: {noClipManager.SprintMultiplier:F1}x");
                         return;
                     }
                     
-                    if (float.TryParse(parameters[2], out float fastSpeed))
+                    if (float.TryParse(parsed.RemainingParameters[1], out float fastMult))
                     {
-                        noClipManager.SetNoClipFastSpeed(fastSpeed);
-                        LogInfo($"NoClip fast speed set to: {fastSpeed:F1}");
+                        noClipManager.SetSprintMultiplier(fastMult);
+                        LogInfo($"NoClip fast multiplier set to: {fastMult:F1}x");
                     }
                     else
                     {
-                        LogError("Invalid fast speed value. Use a number between 5-200");
+                        LogError("Invalid multiplier value. Use a number between 1-10");
                     }
                     break;
                     
@@ -669,8 +706,8 @@ Note: Use 'all' as player name to affect all players";
                 case "info":
                     LogInfo($"=== NoClip Status ===");
                     LogInfo($"Enabled: {noClipManager.IsNoClipEnabled}");
-                    LogInfo($"Speed: {noClipManager.NoClipSpeed:F1}");
-                    LogInfo($"Fast Speed: {noClipManager.NoClipFastSpeed:F1}");
+                    LogInfo($"Base Force: {noClipManager.VerticalForce:F1}");
+                    LogInfo($"Sprint Multiplier: {noClipManager.SprintMultiplier:F1}x");
                     LogInfo($"Controls: WASD to move, Space/Ctrl for up/down, Shift for fast mode");
                     break;
                     
@@ -683,7 +720,6 @@ Note: Use 'all' as player name to affect all players";
         
         public override bool CanExecute()
         {
-            // Could add additional permission checks here if needed
             return Character.localCharacter != null;
         }
     }

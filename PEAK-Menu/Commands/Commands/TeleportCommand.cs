@@ -1,205 +1,167 @@
-using UnityEngine;
+using PEAK_Menu.Utils;
 using System.Linq;
+using UnityEngine;
 
 namespace PEAK_Menu.Commands
 {
     public class TeleportCommand : BaseCommand
     {
         public override string Name => "teleport";
-        public override string Description => "Teleport to coordinates (x y z) or to another player";
-        
+        public override string Description => "Teleport to coordinates or players";
+
         public override string DetailedHelp =>
 @"=== TELEPORT Command Help ===
-Teleport to specific coordinates or to another player
+Teleport to specific locations or players
 
-Usage: 
+Usage:
   teleport <x> <y> <z>     - Teleport to coordinates
-  teleport <playername>    - Teleport to player
-  teleport list            - List all players
-
-Parameters:
-  x, y, z     - Coordinates (float)
-  playername  - Name of player to teleport to
+  teleport <player>        - Teleport to player
+  teleport here <player>   - Teleport player to you
 
 Examples:
-  teleport 0 100 0
-  teleport -50.5 25.3 100.7
-  teleport player2
-  teleport ""John Doe""
-  teleport list
-
-Notes:
-  - Cannot teleport while dead
-  - Player names are case-insensitive
-  - Use quotes for names with spaces
-  - Teleports slightly offset to avoid collision";
+  teleport 100 50 200
+  teleport ""Player Name""
+  teleport here john";
 
         public override void Execute(string[] parameters)
         {
             if (parameters.Length == 0)
             {
-                LogError("Missing parameters");
-                LogInfo("Use 'help teleport' for usage information");
+                LogError("Usage: teleport <x> <y> <z> OR teleport <player> OR teleport here <player>");
                 return;
             }
 
-            var character = Character.localCharacter;
-            if (character == null)
+            var localPlayer = Character.localCharacter;
+            if (localPlayer == null)
             {
                 LogError("No local character found");
                 return;
             }
 
-            // Special command: list players
-            if (parameters.Length == 1 && parameters[0].ToLower() == "list")
+            // Check for "here" subcommand
+            if (parameters[0].ToLower() == "here")
             {
-                ListPlayers();
+                HandleTeleportHere(parameters);
                 return;
             }
 
-            // Try coordinate teleport first (3 parameters)
-            if (parameters.Length == 3)
+            // Try to parse as coordinates (3 numbers)
+            if (parameters.Length >= 3 && 
+                float.TryParse(parameters[0], out float x) &&
+                float.TryParse(parameters[1], out float y) &&
+                float.TryParse(parameters[2], out float z))
             {
-                TeleportToCoordinates(parameters);
+                HandleTeleportToCoordinates(x, y, z);
                 return;
             }
 
-            // Try player teleport (1 parameter or multiple for names with spaces)
-            if (parameters.Length >= 1)
+            // Parse as player name
+            var parsed = ParameterParser.ParsePlayerAndValue(parameters, 0);
+            if (!string.IsNullOrEmpty(parsed.PlayerName))
             {
-                // Join all parameters to handle names with spaces
-                var playerName = string.Join(" ", parameters);
-                TeleportToPlayer(playerName);
-                return;
+                HandleTeleportToPlayer(parsed);
             }
-
-            LogError("Invalid parameters");
-            LogInfo("Use 'help teleport' for usage information");
+            else
+            {
+                LogError("Invalid teleport parameters. Use coordinates or player name.");
+            }
         }
 
-        private void TeleportToCoordinates(string[] parameters)
+        private void HandleTeleportHere(string[] parameters)
         {
-            if (!float.TryParse(parameters[0], out float x) ||
-                !float.TryParse(parameters[1], out float y) ||
-                !float.TryParse(parameters[2], out float z))
+            if (parameters.Length < 2)
             {
-                LogError("Invalid coordinates - must be numbers");
-                LogInfo("Use 'help teleport' for usage information");
+                LogError("Usage: teleport here <player>");
                 return;
             }
 
-            var character = Character.localCharacter;
-            var targetPosition = new Vector3(x, y, z);
+            var playerName = string.Join(" ", parameters.Skip(1));
+            var targets = ParameterParser.GetTargetPlayers(playerName, out string error);
             
-            character.refs.view.RPC("WarpPlayerRPC", Photon.Pun.RpcTarget.All, targetPosition, true);
-            LogInfo($"Teleported to coordinates {targetPosition}");
-        }
-
-        private void TeleportToPlayer(string playerName)
-        {
-            var targetCharacter = FindPlayerByName(playerName);
-            
-            if (targetCharacter == null)
+            if (!string.IsNullOrEmpty(error))
             {
-                LogError($"Player '{playerName}' not found");
-                LogInfo("Use 'teleport list' to see available players");
+                LogError(error);
                 return;
             }
 
-            if (targetCharacter.data.dead)
+            var localPlayer = Character.localCharacter;
+            Vector3 teleportPos = localPlayer.Center + localPlayer.data.lookDirection * 2f;
+
+            foreach (var character in targets)
             {
-                LogWarning($"Player '{targetCharacter.characterName}' is dead");
-                LogInfo("Teleporting to their last known position...");
+                if (character == localPlayer)
+                {
+                    LogWarning("Cannot teleport yourself to yourself");
+                    continue;
+                }
+
+                TeleportCharacter(character, teleportPos);
+                LogInfo($"Teleported {character.characterName} to your location");
             }
-
-            // Calculate safe teleport position (slightly offset to avoid collision)
-            var targetPosition = targetCharacter.Center;
-            var offset = targetCharacter.data.lookDirection_Right * 2f; // 2 units to the right
-            targetPosition += offset;
-            
-            // Ensure we're above ground
-            targetPosition.y += 1f;
-
-            var localCharacter = Character.localCharacter;
-            localCharacter.refs.view.RPC("WarpPlayerRPC", Photon.Pun.RpcTarget.All, targetPosition, true);
-            
-            LogInfo($"Teleported to player '{targetCharacter.characterName}' at {targetPosition}");
         }
 
-        private Character FindPlayerByName(string playerName)
+        private void HandleTeleportToCoordinates(float x, float y, float z)
         {
-            if (string.IsNullOrWhiteSpace(playerName))
-                return null;
-
-            // Get all characters
-            var allCharacters = Character.AllCharacters;
+            var position = new Vector3(x, y, z);
+            var localPlayer = Character.localCharacter;
             
-            // Try exact match first (case-insensitive)
-            var exactMatch = allCharacters.FirstOrDefault(c => 
-                string.Equals(c.characterName, playerName, System.StringComparison.OrdinalIgnoreCase));
-            
-            if (exactMatch != null)
-                return exactMatch;
-
-            // Try partial match (contains)
-            var partialMatch = allCharacters.FirstOrDefault(c => 
-                c.characterName.ToLower().Contains(playerName.ToLower()));
-            
-            if (partialMatch != null)
-            {
-                LogInfo($"Found partial match: '{partialMatch.characterName}'");
-                return partialMatch;
-            }
-
-            return null;
+            TeleportCharacter(localPlayer, position);
+            LogInfo($"Teleported to coordinates: {position}");
         }
 
-        private void ListPlayers()
+        private void HandleTeleportToPlayer(ParameterParser.ParsedParameters parsed)
         {
-            var allCharacters = Character.AllCharacters;
-            var localCharacter = Character.localCharacter;
-            
-            if (allCharacters == null || allCharacters.Count == 0)
+            var targets = ParameterParser.GetTargetPlayers(parsed.PlayerName, out string error);
+            if (!string.IsNullOrEmpty(error))
             {
-                LogInfo("No players found");
+                LogError(error);
                 return;
             }
 
-            LogInfo("=== Available Players ===");
-            
-            int playerCount = 0;
-            foreach (var character in allCharacters.OrderBy(c => c.characterName))
+            var target = targets.FirstOrDefault();
+            if (target == null)
             {
-                if (character == null) continue;
+                LogError("Player not found");
+                return;
+            }
+
+            var localPlayer = Character.localCharacter;
+            if (target == localPlayer)
+            {
+                LogWarning("Cannot teleport to yourself");
+                return;
+            }
+
+            Vector3 targetPos = target.Center + Vector3.back * 2f;
+            TeleportCharacter(localPlayer, targetPos);
+            LogInfo($"Teleported to {target.characterName}");
+        }
+
+        private void TeleportCharacter(Character character, Vector3 position)
+        {
+            try
+            {
+                var warpMethod = typeof(Character).GetMethod("WarpPlayerRPC", 
+                    System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic);
                 
-                playerCount++;
-                var status = "";
-                
-                // Add status indicators
-                if (character == localCharacter)
-                    status += " (YOU)";
-                if (character.data.dead)
-                    status += " [DEAD]";
-                else if (character.data.passedOut)
-                    status += " [PASSED OUT]";
-                else if (character.data.isClimbingAnything)
-                    status += " [CLIMBING]";
-                else if (!character.data.isGrounded)
-                    status += " [AIRBORNE]";
-                
-                var position = character.Center;
-                LogInfo($"  {character.characterName}{status}");
-                LogInfo($"    Position: ({position.x:F1}, {position.y:F1}, {position.z:F1})");
+                if (warpMethod != null)
+                {
+                    warpMethod.Invoke(character, new object[] { position, true });
+                }
+                else
+                {
+                    LogError("Teleport method not found");
+                }
             }
-            
-            LogInfo($"Total: {playerCount} players");
-            LogInfo("Use 'teleport <playername>' to teleport to a player");
+            catch (System.Exception ex)
+            {
+                LogError($"Teleport failed: {ex.Message}");
+            }
         }
 
         public override bool CanExecute()
         {
-            var character = Character.localCharacter;
-            return character != null && !character.data.dead;
+            return Character.localCharacter != null;
         }
     }
 }

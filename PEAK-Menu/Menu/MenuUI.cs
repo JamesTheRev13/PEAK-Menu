@@ -13,6 +13,11 @@ namespace PEAK_Menu.Menu
         private int _selectedTab = 0;
         private readonly string[] _tabNames = { "Console", "Player", "Environment", "Admin" };
 
+        // Add separate scroll positions for each tab
+        private Vector2 _playerTabScrollPosition;
+        private Vector2 _environmentTabScrollPosition;
+        private Vector2 _adminTabScrollPosition;
+
         public MenuUI(MenuManager menuManager)
         {
             _menuManager = menuManager;
@@ -125,10 +130,14 @@ namespace PEAK_Menu.Menu
 
         private void DrawPlayerTab()
         {
+            // Make Player tab scrollable
+            _playerTabScrollPosition = GUILayout.BeginScrollView(_playerTabScrollPosition, GUILayout.Height(420));
+            
             var character = Character.localCharacter;
             if (character == null)
             {
                 GUILayout.Label("No character found");
+                GUILayout.EndScrollView();
                 return;
             }
 
@@ -216,10 +225,18 @@ namespace PEAK_Menu.Menu
             {
                 GUILayout.Label("Rainbow manager not available");
             }
+
+            // Add some extra space at the bottom for better scrolling
+            GUILayout.Space(20);
+            
+            GUILayout.EndScrollView();
         }
 
         private void DrawEnvironmentTab()
         {
+            // Make Environment tab scrollable
+            _environmentTabScrollPosition = GUILayout.BeginScrollView(_environmentTabScrollPosition, GUILayout.Height(420));
+            
             GUILayout.Label("=== Environment ===");
             
             if (DayNightManager.instance != null)
@@ -246,10 +263,18 @@ namespace PEAK_Menu.Menu
                 GUILayout.Label($"Since Grounded: {character.data.sinceGrounded:F1}s");
                 GUILayout.Label($"Fall Seconds: {character.data.fallSeconds:F1}s");
             }
+
+            // Add some extra space at the bottom for better scrolling
+            GUILayout.Space(20);
+            
+            GUILayout.EndScrollView();
         }
 
         private void DrawAdminTab()
         {
+            // Make Admin tab scrollable - this is the most important one due to content size
+            _adminTabScrollPosition = GUILayout.BeginScrollView(_adminTabScrollPosition, GUILayout.Height(420));
+            
             GUILayout.Label("=== Admin Panel ===");
             GUILayout.Label("Administrative tools for moderation");
             
@@ -257,6 +282,7 @@ namespace PEAK_Menu.Menu
             if (localCharacter == null)
             {
                 GUILayout.Label("No character found");
+                GUILayout.EndScrollView();
                 return;
             }
 
@@ -508,6 +534,11 @@ namespace PEAK_Menu.Menu
             GUILayout.Space(10);
             GUILayout.Label("Use console for advanced admin commands");
             GUILayout.Label("Type 'help admin' for full command list");
+
+            // Add extra space at the bottom for better scrolling
+            GUILayout.Space(20);
+            
+            GUILayout.EndScrollView();
         }
 
         private void ExecuteCommand()

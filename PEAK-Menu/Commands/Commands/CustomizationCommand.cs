@@ -1,4 +1,6 @@
-﻿namespace PEAK_Menu.Commands
+﻿using PEAK_Menu.Utils;
+
+namespace PEAK_Menu.Commands
 {
     public class CustomizationCommand : BaseCommand
     {
@@ -41,160 +43,256 @@ Examples:
                 return;
             }
 
-            var option = parameters[0].ToLower();
+            var parsed = ParameterParser.ParseSubCommand(parameters);
             
-            switch (option)
+            switch (parsed.Action)
             {
                 case "randomize":
-                    if (Character.localCharacter?.refs?.customization != null)
-                    {
-                        Character.localCharacter.refs.customization.RandomizeCosmetics();
-                        LogInfo("Character appearance randomized");
-                    }
-                    else
-                    {
-                        LogError("No character customization found");
-                    }
+                    HandleRandomizeCommand();
                     break;
 
                 case "rainbow":
-                    var rainbowManager = Plugin.Instance?._menuManager?.GetRainbowManager();
-                    if (rainbowManager != null)
-                    {
-                        if (parameters.Length > 1)
-                        {
-                            var action = parameters[1].ToLower();
-                            switch (action)
-                            {
-                                case "on":
-                                case "enable":
-                                case "start":
-                                    rainbowManager.EnableRainbow();
-                                    LogInfo("Rainbow skin effect enabled!");
-                                    break;
-                                case "off":
-                                case "disable":
-                                case "stop":
-                                    rainbowManager.DisableRainbow();
-                                    LogInfo("Rainbow skin effect disabled");
-                                    break;
-                                case "speed":
-                                    if (parameters.Length > 2 && float.TryParse(parameters[2], out float speed))
-                                    {
-                                        rainbowManager.SetRainbowSpeed(speed);
-                                        LogInfo($"Rainbow speed set to {speed:F1}x");
-                                        if (speed >= 4.0f)
-                                            LogInfo("RAINBOW OVERDRIVE!");
-                                    }
-                                    else
-                                    {
-                                        LogError("Please provide a valid speed value");
-                                    }
-                                    break;
-                                default:
-                                    LogError($"Unknown rainbow action: {action}");
-                                    LogInfo("Use 'help customize' for rainbow options");
-                                    break;
-                            }
-                        }
-                        else
-                        {
-                            // Toggle rainbow mode
-                            rainbowManager.ToggleRainbow();
-                            LogInfo($"Rainbow skin effect {(rainbowManager.IsRainbowEnabled ? "enabled" : "disabled")}");
-                        }
-                    }
-                    else
-                    {
-                        LogError("Rainbow manager not available");
-                    }
+                    HandleRainbowCommand(parsed);
                     break;
                     
                 case "skin":
-                    if (parameters.Length > 1 && int.TryParse(parameters[1], out int skinIndex))
-                    {
-                        // Disable rainbow when manually setting skin
-                        var rainbowMgr = Plugin.Instance?._menuManager?.GetRainbowManager();
-                        if (rainbowMgr?.IsRainbowEnabled == true)
-                        {
-                            rainbowMgr.DisableRainbow();
-                            LogInfo("Rainbow disabled (manual skin change)");
-                        }
-                        
-                        CharacterCustomization.SetCharacterSkinColor(skinIndex);
-                        LogInfo($"Skin color set to index {skinIndex}");
-                    }
-                    else
-                    {
-                        LogError("Please provide a valid skin index");
-                    }
+                    HandleSkinCommand(parsed);
                     break;
 
                 case "eyes":
-                    if (parameters.Length > 1 && int.TryParse(parameters[1], out int eyeIndex))
-                    {
-                        CharacterCustomization.SetCharacterEyes(eyeIndex);
-                        LogInfo($"Eyes set to index {eyeIndex}");
-                    }
-                    else
-                    {
-                        LogError("Please provide a valid eye index");
-                    }
+                    HandleEyesCommand(parsed);
                     break;
 
                 case "mouth":
-                    if (parameters.Length > 1 && int.TryParse(parameters[1], out int mouthIndex))
-                    {
-                        CharacterCustomization.SetCharacterMouth(mouthIndex);
-                        LogInfo($"Mouth set to index {mouthIndex}");
-                    }
-                    else
-                    {
-                        LogError("Please provide a valid mouth index");
-                    }
+                    HandleMouthCommand(parsed);
                     break;
 
                 case "accessory":
-                    if (parameters.Length > 1 && int.TryParse(parameters[1], out int accessoryIndex))
-                    {
-                        CharacterCustomization.SetCharacterAccessory(accessoryIndex);
-                        LogInfo($"Accessory set to index {accessoryIndex}");
-                    }
-                    else
-                    {
-                        LogError("Please provide a valid accessory index");
-                    }
+                    HandleAccessoryCommand(parsed);
                     break;
 
                 case "outfit":
-                    if (parameters.Length > 1 && int.TryParse(parameters[1], out int outfitIndex))
-                    {
-                        CharacterCustomization.SetCharacterOutfit(outfitIndex);
-                        LogInfo($"Outfit set to index {outfitIndex}");
-                    }
-                    else
-                    {
-                        LogError("Please provide a valid outfit index");
-                    }
+                    HandleOutfitCommand(parsed);
                     break;
 
                 case "hat":
-                    if (parameters.Length > 1 && int.TryParse(parameters[1], out int hatIndex))
-                    {
-                        CharacterCustomization.SetCharacterHat(hatIndex);
-                        LogInfo($"Hat set to index {hatIndex}");
-                    }
-                    else
-                    {
-                        LogError("Please provide a valid hat index");
-                    }
+                    HandleHatCommand(parsed);
                     break;
 
                 default:
-                    LogError($"Unknown customization option: {option}");
+                    LogError($"Unknown customization option: {parsed.Action}");
                     LogInfo("Use 'help customize' for available options");
                     break;
             }
+        }
+
+        private void HandleRandomizeCommand()
+        {
+            if (Character.localCharacter?.refs?.customization != null)
+            {
+                Character.localCharacter.refs.customization.RandomizeCosmetics();
+                LogInfo("Character appearance randomized");
+            }
+            else
+            {
+                LogError("No character customization found");
+            }
+        }
+
+        private void HandleRainbowCommand(ParameterParser.ParsedParameters parsed)
+        {
+            var rainbowManager = Plugin.Instance?._menuManager?.GetRainbowManager();
+            if (rainbowManager == null)
+            {
+                LogError("Rainbow manager not available");
+                return;
+            }
+
+            if (parsed.RemainingParameters.Length == 0)
+            {
+                // Toggle rainbow mode
+                rainbowManager.ToggleRainbow();
+                LogInfo($"Rainbow skin effect {(rainbowManager.IsRainbowEnabled ? "enabled" : "disabled")}");
+                return;
+            }
+
+            var action = parsed.RemainingParameters[0].ToLower();
+            switch (action)
+            {
+                case "on":
+                case "enable":
+                case "start":
+                    rainbowManager.EnableRainbow();
+                    LogInfo("Rainbow skin effect enabled!");
+                    break;
+
+                case "off":
+                case "disable":
+                case "stop":
+                    rainbowManager.DisableRainbow();
+                    LogInfo("Rainbow skin effect disabled");
+                    break;
+
+                case "speed":
+                    HandleRainbowSpeed(parsed.RemainingParameters, rainbowManager);
+                    break;
+
+                default:
+                    LogError($"Unknown rainbow action: {action}");
+                    LogInfo("Use 'help customize' for rainbow options");
+                    break;
+            }
+        }
+
+        private void HandleRainbowSpeed(string[] parameters, RainbowManager rainbowManager)
+        {
+            if (parameters.Length < 2)
+            {
+                LogError("Usage: customize rainbow speed <value>");
+                LogInfo("Valid range: 0.1-10.0");
+                return;
+            }
+
+            if (!float.TryParse(parameters[1], out float speed))
+            {
+                LogError("Please provide a valid speed value");
+                return;
+            }
+
+            if (!ParameterParser.ValidateNumericRange(speed, 0.1f, 10.0f, out string error))
+            {
+                LogError($"Invalid rainbow speed: {error}");
+                return;
+            }
+
+            rainbowManager.SetRainbowSpeed(speed);
+            LogInfo($"Rainbow speed set to {speed:F1}x");
+            if (speed >= 4.0f)
+                LogInfo("RAINBOW OVERDRIVE!");
+        }
+
+        private void HandleSkinCommand(ParameterParser.ParsedParameters parsed)
+        {
+            if (!parsed.NumericValue.HasValue)
+            {
+                LogError("Usage: customize skin <index>");
+                LogInfo("Valid range: 0-20");
+                return;
+            }
+
+            if (!ParameterParser.ValidateIntegerRange(parsed.NumericValue, 0, 20, out string error))
+            {
+                LogError($"Invalid skin index: {error}");
+                return;
+            }
+
+            int skinIndex = (int)parsed.NumericValue.Value;
+
+            // Disable rainbow when manually setting skin
+            var rainbowMgr = Plugin.Instance?._menuManager?.GetRainbowManager();
+            if (rainbowMgr?.IsRainbowEnabled == true)
+            {
+                rainbowMgr.DisableRainbow();
+                LogInfo("Rainbow disabled (manual skin change)");
+            }
+            
+            CharacterCustomization.SetCharacterSkinColor(skinIndex);
+            LogInfo($"Skin color set to index {skinIndex}");
+        }
+
+        private void HandleEyesCommand(ParameterParser.ParsedParameters parsed)
+        {
+            if (!parsed.NumericValue.HasValue)
+            {
+                LogError("Usage: customize eyes <index>");
+                return;
+            }
+
+            if (!ParameterParser.ValidateIntegerRange(parsed.NumericValue, 0, 50, out string error))
+            {
+                LogError($"Invalid eye index: {error}");
+                return;
+            }
+
+            int eyeIndex = (int)parsed.NumericValue.Value;
+            CharacterCustomization.SetCharacterEyes(eyeIndex);
+            LogInfo($"Eyes set to index {eyeIndex}");
+        }
+
+        private void HandleMouthCommand(ParameterParser.ParsedParameters parsed)
+        {
+            if (!parsed.NumericValue.HasValue)
+            {
+                LogError("Usage: customize mouth <index>");
+                return;
+            }
+
+            if (!ParameterParser.ValidateIntegerRange(parsed.NumericValue, 0, 50, out string error))
+            {
+                LogError($"Invalid mouth index: {error}");
+                return;
+            }
+
+            int mouthIndex = (int)parsed.NumericValue.Value;
+            CharacterCustomization.SetCharacterMouth(mouthIndex);
+            LogInfo($"Mouth set to index {mouthIndex}");
+        }
+
+        private void HandleAccessoryCommand(ParameterParser.ParsedParameters parsed)
+        {
+            if (!parsed.NumericValue.HasValue)
+            {
+                LogError("Usage: customize accessory <index>");
+                return;
+            }
+
+            if (!ParameterParser.ValidateIntegerRange(parsed.NumericValue, 0, 50, out string error))
+            {
+                LogError($"Invalid accessory index: {error}");
+                return;
+            }
+
+            int accessoryIndex = (int)parsed.NumericValue.Value;
+            CharacterCustomization.SetCharacterAccessory(accessoryIndex);
+            LogInfo($"Accessory set to index {accessoryIndex}");
+        }
+
+        private void HandleOutfitCommand(ParameterParser.ParsedParameters parsed)
+        {
+            if (!parsed.NumericValue.HasValue)
+            {
+                LogError("Usage: customize outfit <index>");
+                return;
+            }
+
+            if (!ParameterParser.ValidateIntegerRange(parsed.NumericValue, 0, 50, out string error))
+            {
+                LogError($"Invalid outfit index: {error}");
+                return;
+            }
+
+            int outfitIndex = (int)parsed.NumericValue.Value;
+            CharacterCustomization.SetCharacterOutfit(outfitIndex);
+            LogInfo($"Outfit set to index {outfitIndex}");
+        }
+
+        private void HandleHatCommand(ParameterParser.ParsedParameters parsed)
+        {
+            if (!parsed.NumericValue.HasValue)
+            {
+                LogError("Usage: customize hat <index>");
+                return;
+            }
+
+            if (!ParameterParser.ValidateIntegerRange(parsed.NumericValue, 0, 50, out string error))
+            {
+                LogError($"Invalid hat index: {error}");
+                return;
+            }
+
+            int hatIndex = (int)parsed.NumericValue.Value;
+            CharacterCustomization.SetCharacterHat(hatIndex);
+            LogInfo($"Hat set to index {hatIndex}");
         }
 
         public override bool CanExecute()
