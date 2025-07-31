@@ -30,16 +30,149 @@ namespace PEAK_Menu.Menu
         // For tracking hover states - improved approach
         private int _hoveredButtonId = -1;
 
-        // Player selection state for admin tab
-        private Vector2 _playerListScrollPosition;
+        // Player selection state for admin tab - UPDATED for dropdown style
+        private bool _showPlayerDropdown = false;
+        private Vector2 _playerDropdownScrollPosition;
         private int _selectedPlayerIndex = -1;
         private Character _selectedPlayer = null;
+        private string _selectedPlayerName = "Select Player...";
+
+        // Item management state for admin tab
+        private bool _showItemDropdown = false;
+        private Vector2 _itemDropdownScrollPosition;
+        private int _selectedItemIndex = 0;
+        private string _selectedItemName = "Select Item...";
+        
+        // Predefined item list - this is temporary, will be dynamic
+        private readonly string[] _availableItems = {
+            "Select Item...",
+            "rope",
+            "pickaxe",
+            "hammer",
+            "sleeping_bag",
+            "flashlight",
+            "compass",
+            "energy_bar",
+            "water_bottle",
+            "medkit",
+            "bandage",
+            "painkiller",
+            "climbing_spike",
+            "harness",
+            "helmet",
+            "gloves",
+            "boots",
+            "jacket",
+            "pants",
+            "backpack",
+            "carabiner",
+            "ice_axe",
+            "crampons",
+            "tent",
+            "stove",
+            "fuel_canister",
+            "walkie_talkie",
+            "flare",
+            "emergency_beacon",
+            "protein_bar",
+            "electrolyte_drink"
+        };
 
         public MenuUI(MenuManager menuManager)
         {
             _menuManager = menuManager;
             _windowRect = new Rect(50, 50, 700, 500);
             _consoleOutput = new System.Collections.Generic.List<string>();
+        }
+
+        // NEW: Custom dropdown method for player selection
+        private void DrawPlayerDropdown()
+        {
+            var allCharacters = Character.AllCharacters?.ToList();
+            if (allCharacters == null || allCharacters.Count == 0)
+            {
+                GUILayout.Label("No players found");
+                return;
+            }
+
+            GUILayout.BeginHorizontal();
+            GUILayout.Label("Player:", GUILayout.Width(50));
+            
+            // Dropdown button
+            if (GUILayout.Button(_selectedPlayerName, GUILayout.Width(200)))
+            {
+                _showPlayerDropdown = !_showPlayerDropdown;
+            }
+            
+            GUILayout.EndHorizontal();
+            
+            // Dropdown menu
+            if (_showPlayerDropdown)
+            {
+                GUILayout.BeginVertical(GUI.skin.box, GUILayout.Width(250), GUILayout.MaxHeight(150));
+                
+                _playerDropdownScrollPosition = GUILayout.BeginScrollView(_playerDropdownScrollPosition, GUILayout.Height(140));
+                
+                // Add "Select Player..." option at the top
+                var originalColor = GUI.backgroundColor;
+                if (_selectedPlayerIndex == -1)
+                {
+                    GUI.backgroundColor = Color.cyan;
+                }
+                
+                if (GUILayout.Button("Select Player...", GUILayout.Height(25)))
+                {
+                    _selectedPlayerIndex = -1;
+                    _selectedPlayer = null;
+                    _selectedPlayerName = "Select Player...";
+                    _showPlayerDropdown = false;
+                    AddToConsole("[ADMIN] Player selection cleared");
+                }
+                GUI.backgroundColor = originalColor;
+                
+                // Add all players
+                for (int i = 0; i < allCharacters.Count; i++)
+                {
+                    var character = allCharacters[i];
+                    if (character == null) continue;
+                    
+                    // Player status with color coding
+                    var status = character.data.dead ? "[DEAD]" : 
+                                character.data.passedOut ? "[OUT]" : "[OK]";
+                    
+                    var displayName = $"{character.characterName} {status}";
+                    var isSelected = _selectedPlayerIndex == i;
+                    
+                    // Set background color based on selection and status
+                    originalColor = GUI.backgroundColor;
+                    if (isSelected)
+                    {
+                        GUI.backgroundColor = Color.cyan;
+                    }
+                    else if (character.data.dead)
+                    {
+                        GUI.backgroundColor = new Color(0.8f, 0.4f, 0.4f); // Light red for dead
+                    }
+                    else if (character.data.passedOut)
+                    {
+                        GUI.backgroundColor = new Color(0.8f, 0.8f, 0.4f); // Light yellow for passed out
+                    }
+                    
+                    if (GUILayout.Button(displayName, GUILayout.Height(25)))
+                    {
+                        _selectedPlayerIndex = i;
+                        _selectedPlayer = character;
+                        _selectedPlayerName = displayName;
+                        _showPlayerDropdown = false;
+                        AddToConsole($"[ADMIN] Selected player: {character.characterName}");
+                    }
+                    
+                    GUI.backgroundColor = originalColor;
+                }
+                
+                GUILayout.EndScrollView();
+                GUILayout.EndVertical();
+            }
         }
 
         // Standardized toggle button method - FIXED
@@ -95,6 +228,60 @@ namespace PEAK_Menu.Menu
             return clicked;
         }
 
+        // NEW: Custom dropdown method for item selection
+        private void DrawItemDropdown()
+        {
+            GUILayout.BeginHorizontal();
+            GUILayout.Label("Item:", GUILayout.Width(40));
+            
+            // Dropdown button
+            if (GUILayout.Button(_selectedItemName, GUILayout.Width(150)))
+            {
+                _showItemDropdown = !_showItemDropdown;
+            }
+            
+            GUILayout.EndHorizontal();
+            
+            // Dropdown menu
+            if (_showItemDropdown)
+            {
+                GUILayout.BeginVertical(GUI.skin.box, GUILayout.Width(190), GUILayout.MaxHeight(150));
+                
+                _itemDropdownScrollPosition = GUILayout.BeginScrollView(_itemDropdownScrollPosition, GUILayout.Height(140));
+                
+                for (int i = 0; i < _availableItems.Length; i++)
+                {
+                    var item = _availableItems[i];
+                    var isSelected = _selectedItemIndex == i;
+                    
+                    // Highlight selected item
+                    var originalColor = GUI.backgroundColor;
+                    if (isSelected)
+                    {
+                        GUI.backgroundColor = Color.cyan;
+                    }
+                    
+                    if (GUILayout.Button(item, GUILayout.Height(20)))
+                    {
+                        _selectedItemIndex = i;
+                        _selectedItemName = item;
+                        _showItemDropdown = false;
+                        
+                        // Don't log for "Select Item..." option
+                        if (i > 0)
+                        {
+                            AddToConsole($"[ADMIN] Selected item: {item}");
+                        }
+                    }
+                    
+                    GUI.backgroundColor = originalColor;
+                }
+                
+                GUILayout.EndScrollView();
+                GUILayout.EndVertical();
+            }
+        }
+
         public void OnGUI()
         {
             if (!_menuManager.IsMenuOpen)
@@ -102,6 +289,19 @@ namespace PEAK_Menu.Menu
 
             // Handle global key events for the menu
             HandleGlobalKeyEvents();
+            
+            // Close dropdowns if clicking outside
+            if (Event.current.type == EventType.MouseDown)
+            {
+                if (_showItemDropdown)
+                {
+                    _showItemDropdown = false;
+                }
+                if (_showPlayerDropdown)
+                {
+                    _showPlayerDropdown = false;
+                }
+            }
 
             GUI.matrix = Matrix4x4.Scale(Vector3.one * Plugin.PluginConfig.MenuScale.Value);
             _windowRect = GUI.Window(0, _windowRect, DrawWindow, $"{MyPluginInfo.PLUGIN_NAME} v{MyPluginInfo.PLUGIN_VERSION}");
@@ -109,11 +309,24 @@ namespace PEAK_Menu.Menu
 
         private void HandleGlobalKeyEvents()
         {
-            // Handle Escape key to close menu
+            // Handle Escape key to close menu or dropdowns
             if (Event.current.type == EventType.KeyDown && Event.current.keyCode == KeyCode.Escape)
             {
-                _menuManager.ToggleMenu();
-                Event.current.Use(); // Consume the event
+                if (_showItemDropdown)
+                {
+                    _showItemDropdown = false;
+                    Event.current.Use();
+                }
+                else if (_showPlayerDropdown)
+                {
+                    _showPlayerDropdown = false;
+                    Event.current.Use();
+                }
+                else
+                {
+                    _menuManager.ToggleMenu();
+                    Event.current.Use();
+                }
             }
         }
 
@@ -609,7 +822,7 @@ namespace PEAK_Menu.Menu
             }
             GUILayout.EndHorizontal();
 
-            // Player Management Section - UPDATED (removed local-only commands)
+            // Player Management Section - UPDATED with Item Management
             DrawPlayerManagementSection();
 
             // Note about RPC limitations
@@ -618,6 +831,7 @@ namespace PEAK_Menu.Menu
             GUILayout.Label("• Some multi-player actions may require RPC calls");
             GUILayout.Label("• Remote player modifications under investigation");
             GUILayout.Label("• God Mode, Infinite Stamina only work for local player");
+            GUILayout.Label("• Item giving may spawn items at player's feet for remote players");
             GUILayout.Label("• Use console for advanced admin commands");
             
             var hotkeyText = Plugin.PluginConfig?.MenuToggleKey?.Value.ToString() ?? "Insert";
@@ -739,53 +953,21 @@ namespace PEAK_Menu.Menu
             GUILayout.Space(10);
             GUILayout.Label("=== Player Management ===");
             
-            var allCharacters = Character.AllCharacters?.ToList();
-            if (allCharacters == null || allCharacters.Count == 0)
-            {
-                GUILayout.Label("No players found");
-                return;
-            }
-
-            // Player Selection List
+            // Player Selection Dropdown - UPDATED
             GUILayout.Label("Select Player:");
-            _playerListScrollPosition = GUILayout.BeginScrollView(_playerListScrollPosition, GUILayout.Height(120));
-            
-            for (int i = 0; i < allCharacters.Count; i++)
-            {
-                var character = allCharacters[i];
-                if (character == null) continue;
-                
-                // Player status with color coding
-                var status = character.data.dead ? "[DEAD]" : 
-                            character.data.passedOut ? "[OUT]" : "[OK]";
-        
-                var statusColor = character.data.dead ? Color.red :
-                                 character.data.passedOut ? Color.yellow : Color.green;
-        
-                // Selection button with status
-                var isSelected = _selectedPlayerIndex == i;
-                var buttonColor = isSelected ? Color.cyan : Color.white;
-                
-                var originalColor = GUI.backgroundColor;
-                GUI.backgroundColor = buttonColor;
-                
-                if (GUILayout.Button($"{character.characterName} {status}", GUILayout.Height(25)))
-                {
-                    _selectedPlayerIndex = i;
-                    _selectedPlayer = character;
-                    AddToConsole($"[ADMIN] Selected player: {character.characterName}");
-                }
-                
-                GUI.backgroundColor = originalColor;
-            }
-            
-            GUILayout.EndScrollView();
+            DrawPlayerDropdown();
 
-            // Selected Player Actions - UPDATED (removed local-only commands)
+            // Selected Player Actions - UPDATED with Item Management
             if (_selectedPlayer != null)
             {
                 GUILayout.Space(10);
                 GUILayout.Label($"=== Actions for: {_selectedPlayer.characterName} ===");
+                
+                // Player info display
+                var status = _selectedPlayer.data.dead ? "[DEAD]" : 
+                            _selectedPlayer.data.passedOut ? "[OUT]" : "[OK]";
+                var isLocal = _selectedPlayer.IsLocal ? " (Local)" : " (Remote)";
+                GUILayout.Label($"Status: {status}{isLocal}", GUI.skin.box);
                 
                 // Basic Actions Row 1
                 GUILayout.BeginHorizontal();
@@ -824,8 +1006,76 @@ namespace PEAK_Menu.Menu
                 }
                 GUILayout.EndHorizontal();
                 
-                // REMOVED: God Mode, Infinite Stamina, Clear Status buttons
-                // These are local-only and have been moved to Player tab
+                // NEW: Item Management Section
+                GUILayout.Space(10);
+                GUILayout.Label("=== Item Management ===");
+                
+                // Item selection dropdown
+                DrawItemDropdown();
+                
+                GUILayout.Space(5);
+                
+                // Give item button
+                GUILayout.BeginHorizontal();
+                
+                // Button state logic
+                bool canGiveItem = _selectedItemIndex > 0; // Index 0 is "Select Item..."
+                var buttonColor = GUI.backgroundColor;
+                
+                if (!canGiveItem)
+                {
+                    GUI.backgroundColor = Color.gray;
+                }
+                
+                if (GUILayout.Button("Give Item", GUILayout.Width(100)) && canGiveItem)
+                {
+                    var itemName = _availableItems[_selectedItemIndex];
+                    // TODO: Implement actual item giving logic
+                    
+                    // For now, just log the action
+                    if (_selectedPlayer.IsLocal)
+                    {
+                        AddToConsole($"[ADMIN] Giving {itemName} to {_selectedPlayer.characterName} (local player)");
+                        AddToConsole($"[TODO] Implement direct inventory addition for local player");
+                    }
+                    else
+                    {
+                        AddToConsole($"[ADMIN] Spawning {itemName} near {_selectedPlayer.characterName} (remote player)");
+                        AddToConsole($"[TODO] Implement item spawning at player location");
+                    }
+                }
+                
+                if (GUILayout.Button("Give Item x5", GUILayout.Width(100)) && canGiveItem)
+                {
+                    var itemName = _availableItems[_selectedItemIndex];
+                    // TODO: Implement bulk item giving logic
+                    
+                    if (_selectedPlayer.IsLocal)
+                    {
+                        AddToConsole($"[ADMIN] Giving 5x {itemName} to {_selectedPlayer.characterName} (local player)");
+                        AddToConsole($"[TODO] Implement bulk inventory addition for local player");
+                    }
+                    else
+                    {
+                        AddToConsole($"[ADMIN] Spawning 5x {itemName} near {_selectedPlayer.characterName} (remote player)");
+                        AddToConsole($"[TODO] Implement bulk item spawning at player location");
+                    }
+                }
+                
+                GUI.backgroundColor = buttonColor;
+                GUILayout.EndHorizontal();
+                
+                // Item management help text
+                if (!canGiveItem)
+                {
+                    GUILayout.Label("Select an item from the dropdown to enable giving", GUI.skin.box);
+                }
+                else
+                {
+                    var local = _selectedPlayer.IsLocal;
+                    var methodText = local ? "Direct inventory addition" : "Spawn at player location";
+                    GUILayout.Label($"Method: {methodText}", GUI.skin.box);
+                }
                 
                 GUILayout.Space(5);
                 GUILayout.Label("Note: God Mode and Infinite Stamina are in Player tab");
@@ -834,7 +1084,7 @@ namespace PEAK_Menu.Menu
             else
             {
                 GUILayout.Space(10);
-                GUILayout.Label("Select a player above to perform actions");
+                GUILayout.Label("Select a player from the dropdown above to perform actions", GUI.skin.box);
             }
         }
 
