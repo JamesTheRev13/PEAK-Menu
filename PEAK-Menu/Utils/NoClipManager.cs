@@ -13,6 +13,10 @@ namespace PEAK_Menu.Utils
 
         // Store original physics states for restoration
         private System.Collections.Generic.Dictionary<Rigidbody, PhysicsState> _originalStates;
+        
+        // Track relative positions to maintain character shape
+        private System.Collections.Generic.Dictionary<Rigidbody, Vector3> _relativePositions;
+        private Vector3 _lastCenterPosition;
 
         public bool IsNoClipEnabled => _noClipEnabled;
         public float NoClipSpeed => _noClipSpeed;
@@ -41,6 +45,7 @@ namespace PEAK_Menu.Utils
         public NoClipManager()
         {
             _originalStates = new System.Collections.Generic.Dictionary<Rigidbody, PhysicsState>();
+            _relativePositions = new System.Collections.Generic.Dictionary<Rigidbody, Vector3>();
         }
 
         public void EnableNoClip()
@@ -59,6 +64,7 @@ namespace PEAK_Menu.Utils
             // Store original states
             _wasPreviouslyGrounded = character.data.isGrounded;
             StoreOriginalPhysicsStates(character);
+            StoreRelativePositions(character);
             
             // Disable collision for all body parts
             SetCollisionEnabled(character, false);
@@ -90,6 +96,7 @@ namespace PEAK_Menu.Utils
             
             // Clear stored states
             _originalStates.Clear();
+            _relativePositions.Clear();
             
             Plugin.Log.LogInfo("NoClip disabled");
         }
@@ -138,6 +145,25 @@ namespace PEAK_Menu.Utils
                         isKinematic = rigidbody.isKinematic,
                         constraints = rigidbody.constraints
                     };
+                }
+            }
+        }
+
+        private void StoreRelativePositions(Character character)
+        {
+            _relativePositions.Clear();
+            
+            // Use hip as the center reference point
+            var hipRig = character.refs.ragdoll.partDict[BodypartType.Hip].Rig;
+            var centerPos = hipRig.position;
+            _lastCenterPosition = centerPos;
+            
+            // Store each body part's relative position to the hip
+            foreach (var bodypart in character.refs.ragdoll.partList)
+            {
+                if (bodypart?.Rig != null)
+                {
+                    _relativePositions[bodypart.Rig] = bodypart.Rig.position - centerPos;
                 }
             }
         }
@@ -223,23 +249,29 @@ namespace PEAK_Menu.Utils
             
             if (movement != Vector3.zero)
             {
-                // Move the entire character
-                MoveCharacter(character, movement);
+                // Move the entire character using improved method
+                MoveCharacterMaintainShape(character, movement);
             }
         }
 
-        private void MoveCharacter(Character character, Vector3 movement)
+        private void MoveCharacterMaintainShape(Character character, Vector3 movement)
         {
-            // Move the entire character transform instead of individual body parts
-            // This maintains the ragdoll's relative positions
-            character.transform.position += movement;
+            // Get the hip (center) rigidbody
+            var hipRig = character.refs.ragdoll.partDict[BodypartType.Hip].Rig;
             
-            // Also move all ragdoll parts to ensure consistency
+            // Calculate the new center position
+            var newCenterPosition = _lastCenterPosition + movement;
+            
+            // Move the main character transform first
+            character.transform.position = newCenterPosition;
+            
+            // Move each body part to maintain relative positions
             foreach (var bodypart in character.refs.ragdoll.partList)
             {
-                if (bodypart?.Rig != null)
+                if (bodypart?.Rig != null && _relativePositions.TryGetValue(bodypart.Rig, out var relativePos))
                 {
-                    bodypart.Rig.position += movement;
+                    // Set absolute position based on new center + relative offset
+                    bodypart.Rig.position = newCenterPosition + relativePos;
                     
                     // Only clear velocities if not kinematic (to avoid warnings)
                     if (!bodypart.Rig.isKinematic)
@@ -248,6 +280,46 @@ namespace PEAK_Menu.Utils
                         bodypart.Rig.angularVelocity = Vector3.zero;
                     }
                 }
+            }
+            
+            // Update animation helper transforms to match
+            UpdateAnimationTransforms(character, newCenterPosition);
+            
+            // Update our center position tracking
+            _lastCenterPosition = newCenterPosition;
+        }
+
+        private void UpdateAnimationTransforms(Character character, Vector3 newCenterPosition)
+        {
+            try
+            {
+                // Update helper transforms that the camera system uses
+                if (character.refs.animationHeadTransform != null)
+                {
+                    var headRig = character.refs.ragdoll.partDict[BodypartType.Head].Rig;
+                    character.refs.animationHeadTransform.position = headRig.position;
+                }
+                
+                if (character.refs.animationHipTransform != null)
+                {
+                    character.refs.animationHipTransform.position = newCenterPosition;
+                }
+                
+                if (character.refs.animationPositionTransform != null)
+                {
+                    character.refs.animationPositionTransform.position = newCenterPosition;
+                }
+                
+                if (character.refs.animationLookTransform != null)
+                {
+                    var headRig = character.refs.ragdoll.partDict[BodypartType.Head].Rig;
+                    character.refs.animationLookTransform.position = headRig.position;
+                    character.refs.animationLookTransform.rotation = headRig.rotation;
+                }
+            }
+            catch (System.Exception ex)
+            {
+                Plugin.Log.LogDebug($"Could not update animation transforms: {ex.Message}");
             }
         }
 
