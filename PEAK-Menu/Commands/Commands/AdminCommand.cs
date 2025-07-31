@@ -26,6 +26,11 @@ Status Management:
   health <player> <0-1>     - Set health level
   clear-status <player>     - Clear all negative status effects
 
+Movement Tools:
+  noclip [on/off]           - Toggle noclip mode (fly through walls)
+  noclip speed <value>      - Set noclip speed (1-100)
+  noclip fast <value>       - Set noclip fast speed (5-200)
+
 Moderation Tools:
   infinite-stamina <player> [on/off] - Toggle infinite stamina
   god-mode <player> [on/off]         - Toggle god mode (no damage)
@@ -40,6 +45,8 @@ Utility:
 Examples:
   admin heal player1
   admin revive ""John Doe""
+  admin noclip on
+  admin noclip speed 15
   admin infinite-stamina player1 on
   admin clear-status all
   admin list-players
@@ -103,6 +110,9 @@ Note: Use 'all' as player name to affect all players";
                     break;
                 case "reset-world":
                     HandleResetWorldCommand();
+                    break;
+                case "noclip":
+                    HandleNoClipCommand(parameters);
                     break;
                 default:
                     LogError($"Unknown admin command: {command}");
@@ -565,6 +575,112 @@ Note: Use 'all' as player name to affect all players";
             return null;
         }
 
+        private void HandleNoClipCommand(string[] parameters)
+        {
+            var noClipManager = Plugin.Instance?._menuManager?.GetNoClipManager();
+            if (noClipManager == null)
+            {
+                LogError("NoClip manager not available");
+                return;
+            }
+
+            if (parameters.Length == 1)
+            {
+                // Just "admin noclip" - toggle
+                noClipManager.ToggleNoClip();
+                LogInfo($"NoClip {(noClipManager.IsNoClipEnabled ? "enabled" : "disabled")}");
+                return;
+            }
+
+            var subCommand = parameters[1].ToLower();
+            
+            switch (subCommand)
+            {
+                case "on":
+                case "enable":
+                case "true":
+                case "1":
+                    if (!noClipManager.IsNoClipEnabled)
+                    {
+                        noClipManager.EnableNoClip();
+                        LogInfo("NoClip enabled");
+                    }
+                    else
+                    {
+                        LogInfo("NoClip already enabled");
+                    }
+                    break;
+                    
+                case "off":
+                case "disable":
+                case "false":
+                case "0":
+                    if (noClipManager.IsNoClipEnabled)
+                    {
+                        noClipManager.DisableNoClip();
+                        LogInfo("NoClip disabled");
+                    }
+                    else
+                    {
+                        LogInfo("NoClip already disabled");
+                    }
+                    break;
+                    
+                case "speed":
+                    if (parameters.Length < 3)
+                    {
+                        LogError("Usage: admin noclip speed <value>");
+                        LogInfo($"Current speed: {noClipManager.NoClipSpeed:F1}");
+                        return;
+                    }
+                    
+                    if (float.TryParse(parameters[2], out float speed))
+                    {
+                        noClipManager.SetNoClipSpeed(speed);
+                        LogInfo($"NoClip speed set to: {speed:F1}");
+                    }
+                    else
+                    {
+                        LogError("Invalid speed value. Use a number between 1-100");
+                    }
+                    break;
+                    
+                case "fast":
+                case "fastspeed":
+                    if (parameters.Length < 3)
+                    {
+                        LogError("Usage: admin noclip fast <value>");
+                        LogInfo($"Current fast speed: {noClipManager.NoClipFastSpeed:F1}");
+                        return;
+                    }
+                    
+                    if (float.TryParse(parameters[2], out float fastSpeed))
+                    {
+                        noClipManager.SetNoClipFastSpeed(fastSpeed);
+                        LogInfo($"NoClip fast speed set to: {fastSpeed:F1}");
+                    }
+                    else
+                    {
+                        LogError("Invalid fast speed value. Use a number between 5-200");
+                    }
+                    break;
+                    
+                case "status":
+                case "info":
+                    LogInfo($"=== NoClip Status ===");
+                    LogInfo($"Enabled: {noClipManager.IsNoClipEnabled}");
+                    LogInfo($"Speed: {noClipManager.NoClipSpeed:F1}");
+                    LogInfo($"Fast Speed: {noClipManager.NoClipFastSpeed:F1}");
+                    LogInfo($"Controls: WASD to move, Space/Ctrl for up/down, Shift for fast mode");
+                    break;
+                    
+                default:
+                    LogError($"Unknown noclip command: {subCommand}");
+                    LogInfo("Available options: on, off, speed <value>, fast <value>, status");
+                    break;
+            }
+        }
+        
         public override bool CanExecute()
         {
             // Could add additional permission checks here if needed

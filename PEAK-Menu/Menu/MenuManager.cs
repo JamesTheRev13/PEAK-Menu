@@ -10,6 +10,7 @@ namespace PEAK_Menu.Menu
         private CommandManager _commandManager;
         private MenuUI _menuUI;
         private RainbowManager _rainbowManager;
+        private NoClipManager _noClipManager;
 
         public bool IsMenuOpen => _isMenuOpen;
 
@@ -20,6 +21,7 @@ namespace PEAK_Menu.Menu
                 _commandManager = new CommandManager();
                 _menuUI = new MenuUI(this);
                 _rainbowManager = new RainbowManager();
+                _noClipManager = new NoClipManager();
                 Plugin.Log.LogInfo("Menu system initialized");
             }
             catch (System.Exception ex)
@@ -38,8 +40,9 @@ namespace PEAK_Menu.Menu
                     ToggleMenu();
                 }
 
-                // Update rainbow effect
+                // Update effects
                 _rainbowManager?.Update();
+                _noClipManager?.Update();
             }
             catch (System.Exception ex)
             {
@@ -101,11 +104,17 @@ namespace PEAK_Menu.Menu
             return _rainbowManager;
         }
 
+        public NoClipManager GetNoClipManager()
+        {
+            return _noClipManager;
+        }
+
         public void Cleanup()
         {
             try
             {
                 _rainbowManager?.DisableRainbow();
+                _noClipManager?.DisableNoClip();
                 _commandManager?.Cleanup();
             }
             catch (System.Exception ex)

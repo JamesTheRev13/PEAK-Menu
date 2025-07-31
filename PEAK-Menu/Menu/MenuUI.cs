@@ -284,7 +284,7 @@ namespace PEAK_Menu.Menu
             {
                 if (!localCharacter.statusesLocked)
                 {
-                    Character.LockStatuses(); // Use existing console command
+                    Character.LockStatuses();
                     AddToConsole("[ADMIN] God mode enabled for you");
                 }
                 else
@@ -296,7 +296,7 @@ namespace PEAK_Menu.Menu
             {
                 if (localCharacter.statusesLocked)
                 {
-                    Character.LockStatuses(); // Use existing console command (toggles)
+                    Character.LockStatuses();
                     AddToConsole("[ADMIN] God mode disabled for you");
                 }
                 else
@@ -311,7 +311,7 @@ namespace PEAK_Menu.Menu
             {
                 if (!localCharacter.infiniteStam)
                 {
-                    Character.InfiniteStamina(); // Use existing console command
+                    Character.InfiniteStamina();
                     AddToConsole("[ADMIN] Infinite stamina enabled for you");
                 }
                 else
@@ -323,7 +323,7 @@ namespace PEAK_Menu.Menu
             {
                 if (localCharacter.infiniteStam)
                 {
-                    Character.InfiniteStamina(); // Use existing console command (toggles)
+                    Character.InfiniteStamina();
                     AddToConsole("[ADMIN] Infinite stamina disabled for you");
                 }
                 else
@@ -332,6 +332,86 @@ namespace PEAK_Menu.Menu
                 }
             }
             GUILayout.EndHorizontal();
+
+            // NoClip controls
+            GUILayout.Space(10);
+            GUILayout.Label("=== Movement Controls ===");
+
+            var noClipManager = _menuManager.GetNoClipManager();
+            if (noClipManager != null)
+            {
+                var isNoClipEnabled = noClipManager.IsNoClipEnabled;
+                
+                // NoClip toggle
+                GUILayout.BeginHorizontal();
+                var noClipButtonText = isNoClipEnabled ? "NoClip OFF" : "NoClip ON";
+                var noClipButtonColor = isNoClipEnabled ? Color.red : Color.green;
+                
+                var originalColor = GUI.backgroundColor;
+                GUI.backgroundColor = noClipButtonColor;
+                
+                if (GUILayout.Button(noClipButtonText, GUILayout.Width(100)))
+                {
+                    noClipManager.ToggleNoClip();
+                    AddToConsole($"[ADMIN] NoClip {(noClipManager.IsNoClipEnabled ? "enabled" : "disabled")}");
+                }
+                
+                GUI.backgroundColor = originalColor;
+                
+                // Status display
+                var statusText = isNoClipEnabled ? "ENABLED" : "Disabled";
+                GUILayout.Label($"NoClip: {statusText}", GUILayout.Width(100));
+                
+                GUILayout.EndHorizontal();
+                
+                // Speed controls when enabled
+                if (isNoClipEnabled)
+                {
+                    GUILayout.Space(5);
+                    GUILayout.Label("NoClip Speed Controls:");
+                    
+                    GUILayout.BeginHorizontal();
+                    GUILayout.Label($"Speed: {noClipManager.NoClipSpeed:F1}", GUILayout.Width(80));
+                    
+                    if (GUILayout.Button("-", GUILayout.Width(30)))
+                    {
+                        var newSpeed = Mathf.Max(1f, noClipManager.NoClipSpeed - 2f);
+                        noClipManager.SetNoClipSpeed(newSpeed);
+                        AddToConsole($"[ADMIN] NoClip speed: {newSpeed:F1}");
+                    }
+                    if (GUILayout.Button("+", GUILayout.Width(30)))
+                    {
+                        var newSpeed = Mathf.Min(100f, noClipManager.NoClipSpeed + 2f);
+                        noClipManager.SetNoClipSpeed(newSpeed);
+                        AddToConsole($"[ADMIN] NoClip speed: {newSpeed:F1}");
+                    }
+                    GUILayout.EndHorizontal();
+                    
+                    GUILayout.BeginHorizontal();
+                    GUILayout.Label($"Fast: {noClipManager.NoClipFastSpeed:F1}", GUILayout.Width(80));
+                    
+                    if (GUILayout.Button("-", GUILayout.Width(30)))
+                    {
+                        var newSpeed = Mathf.Max(5f, noClipManager.NoClipFastSpeed - 5f);
+                        noClipManager.SetNoClipFastSpeed(newSpeed);
+                        AddToConsole($"[ADMIN] NoClip fast speed: {newSpeed:F1}");
+                    }
+                    if (GUILayout.Button("+", GUILayout.Width(30)))
+                    {
+                        var newSpeed = Mathf.Min(200f, noClipManager.NoClipFastSpeed + 5f);
+                        noClipManager.SetNoClipFastSpeed(newSpeed);
+                        AddToConsole($"[ADMIN] NoClip fast speed: {newSpeed:F1}");
+                    }
+                    GUILayout.EndHorizontal();
+                    
+                    GUILayout.Space(5);
+                    GUILayout.Label("Controls: WASD + Space/Ctrl + Shift");
+                }
+            }
+            else
+            {
+                GUILayout.Label("NoClip manager not available");
+            }
 
             if (GUILayout.Button("Full Self Heal"))
             {
