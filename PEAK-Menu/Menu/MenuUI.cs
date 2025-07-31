@@ -394,6 +394,16 @@ namespace PEAK_Menu.Menu
                 {
                     playerManager.SetNoWeight(!isNoWeightEnabled);
                     AddToConsole($"[PLAYER] No weight {(!isNoWeightEnabled ? "enabled" : "disabled")}");
+                    
+                    if (!isNoWeightEnabled)
+                    {
+                        AddToConsole("[INFO] Inventory weight penalties disabled via Harmony patches");
+                        AddToConsole("[INFO] You can now carry unlimited weight without speed penalties");
+                    }
+                    else
+                    {
+                        AddToConsole("[INFO] Normal weight mechanics restored");
+                    }
                 }
                 
                 // Affliction Immunity - Updated with standardized toggle and unique ID

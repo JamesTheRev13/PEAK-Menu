@@ -6,7 +6,6 @@ namespace PEAK_Menu.Utils
     public class PlayerManager
     {
         private bool _noFallDamageEnabled = false;
-        // TODO: noWeight is not working
         private bool _noWeightEnabled = false;
         private bool _afflictionImmunityEnabled = false;
         private bool _speedModEnabled = false;

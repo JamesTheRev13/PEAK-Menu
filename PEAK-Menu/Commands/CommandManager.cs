@@ -88,6 +88,7 @@ namespace PEAK_Menu.Commands
                 RegisterCommand(new CustomizationCommand());
                 RegisterCommand(new TeleportCommand());
                 RegisterCommand(new TeleportToPingCommand());
+                RegisterCommand(new NoWeightCommand());
 
                 // Admin commands
                 RegisterCommand(new AdminCommand());
