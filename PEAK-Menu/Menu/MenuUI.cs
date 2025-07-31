@@ -1,3 +1,4 @@
+using System.Linq;
 using UnityEngine;
 
 namespace PEAK_Menu.Menu
@@ -10,7 +11,7 @@ namespace PEAK_Menu.Menu
         private Vector2 _scrollPosition;
         private readonly System.Collections.Generic.List<string> _consoleOutput;
         private int _selectedTab = 0;
-        private readonly string[] _tabNames = { "Console", "Player", "Environment" };
+        private readonly string[] _tabNames = { "Console", "Player", "Environment", "Admin" };
 
         public MenuUI(MenuManager menuManager)
         {
@@ -58,6 +59,9 @@ namespace PEAK_Menu.Menu
                     break;
                 case 2:
                     DrawEnvironmentTab();
+                    break;
+                case 3:
+                    DrawAdminTab();
                     break;
             }
 
@@ -244,6 +248,157 @@ namespace PEAK_Menu.Menu
             }
         }
 
+        private void DrawAdminTab()
+        {
+            GUILayout.Label("=== Admin Panel ===");
+            GUILayout.Label("Administrative tools for moderation");
+            
+            var localCharacter = Character.localCharacter;
+            if (localCharacter == null)
+            {
+                GUILayout.Label("No character found");
+                return;
+            }
+
+            // Quick Actions Section
+            GUILayout.Space(10);
+            GUILayout.Label("=== Quick Actions ===");
+            
+            GUILayout.BeginHorizontal();
+            if (GUILayout.Button("Emergency Heal All", GUILayout.Width(150)))
+            {
+                ExecuteAdminCommand("admin emergency-heal-all");
+            }
+            if (GUILayout.Button("List All Players", GUILayout.Width(150)))
+            {
+                ExecuteAdminCommand("admin list-players");
+            }
+            GUILayout.EndHorizontal();
+
+            // Self Admin Section
+            GUILayout.Space(10);
+            GUILayout.Label("=== Self Administration ===");
+            
+            GUILayout.BeginHorizontal();
+            if (GUILayout.Button("God Mode ON", GUILayout.Width(100)))
+            {
+                if (!localCharacter.statusesLocked)
+                {
+                    Character.LockStatuses(); // Use existing console command
+                    AddToConsole("[ADMIN] God mode enabled for you");
+                }
+                else
+                {
+                    AddToConsole("[ADMIN] God mode already enabled");
+                }
+            }
+            if (GUILayout.Button("God Mode OFF", GUILayout.Width(100)))
+            {
+                if (localCharacter.statusesLocked)
+                {
+                    Character.LockStatuses(); // Use existing console command (toggles)
+                    AddToConsole("[ADMIN] God mode disabled for you");
+                }
+                else
+                {
+                    AddToConsole("[ADMIN] God mode already disabled");
+                }
+            }
+            GUILayout.EndHorizontal();
+            
+            GUILayout.BeginHorizontal();
+            if (GUILayout.Button("Infinite Stamina ON", GUILayout.Width(130)))
+            {
+                if (!localCharacter.infiniteStam)
+                {
+                    Character.InfiniteStamina(); // Use existing console command
+                    AddToConsole("[ADMIN] Infinite stamina enabled for you");
+                }
+                else
+                {
+                    AddToConsole("[ADMIN] Infinite stamina already enabled");
+                }
+            }
+            if (GUILayout.Button("Infinite Stamina OFF", GUILayout.Width(130)))
+            {
+                if (localCharacter.infiniteStam)
+                {
+                    Character.InfiniteStamina(); // Use existing console command (toggles)
+                    AddToConsole("[ADMIN] Infinite stamina disabled for you");
+                }
+                else
+                {
+                    AddToConsole("[ADMIN] Infinite stamina already disabled");
+                }
+            }
+            GUILayout.EndHorizontal();
+
+            if (GUILayout.Button("Full Self Heal"))
+            {
+                ExecuteAdminCommand($"admin heal {localCharacter.characterName}");
+            }
+
+            // Player Management Section
+            GUILayout.Space(10);
+            GUILayout.Label("=== Player Management ===");
+            
+            var allCharacters = Character.AllCharacters?.Take(8); // Limit display
+            if (allCharacters != null)
+            {
+                foreach (var character in allCharacters)
+                {
+                    if (character == null) continue;
+                    
+                    GUILayout.BeginHorizontal();
+                    
+                    // Player name and status
+                    var status = character.data.dead ? "[DEAD]" : 
+                                character.data.passedOut ? "[OUT]" : "[OK]";
+                    GUILayout.Label($"{character.characterName} {status}", GUILayout.Width(150));
+                    
+                    // Quick action buttons
+                    if (GUILayout.Button("Heal", GUILayout.Width(50)))
+                    {
+                        ExecuteAdminCommand($"admin heal \"{character.characterName}\"");
+                    }
+                    if (GUILayout.Button("Goto", GUILayout.Width(50)))
+                    {
+                        ExecuteAdminCommand($"admin goto \"{character.characterName}\"");
+                    }
+                    if (GUILayout.Button("Rescue", GUILayout.Width(60)))
+                    {
+                        ExecuteAdminCommand($"admin rescue \"{character.characterName}\"");
+                    }
+                    
+                    // Add Revive button - only show if player is dead or passed out
+                    if (character.data.dead || character.data.fullyPassedOut)
+                    {
+                        if (GUILayout.Button("Revive", GUILayout.Width(60)))
+                        {
+                            ExecuteAdminCommand($"admin revive \"{character.characterName}\"");
+                        }
+                    }
+                    else
+                    {
+                        // Add some spacing to keep layout consistent
+                        GUILayout.Space(64); // 60 width + 4 padding
+                    }
+                    
+                    GUILayout.EndHorizontal();
+                }
+            }
+
+            // Status Display
+            GUILayout.Space(10);
+            GUILayout.Label("=== Your Admin Status ===");
+            GUILayout.Label($"God Mode: {(localCharacter.statusesLocked ? "ON" : "OFF")}");
+            GUILayout.Label($"Infinite Stamina: {(localCharacter.infiniteStam ? "ON" : "OFF")}");
+            
+            GUILayout.Space(10);
+            GUILayout.Label("Use console for advanced admin commands");
+            GUILayout.Label("Type 'help admin' for full command list");
+        }
+
         private void ExecuteCommand()
         {
             if (string.IsNullOrWhiteSpace(_consoleInput))
@@ -255,6 +410,12 @@ namespace PEAK_Menu.Menu
             
             // Keep focus on console input after command execution
             //GUI.FocusControl("ConsoleInput");
+        }
+
+        private void ExecuteAdminCommand(string command)
+        {
+            AddToConsole($"> {command}");
+            _menuManager.ExecuteCommand(command);
         }
 
         public void AddToConsole(string message)

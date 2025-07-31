@@ -88,6 +88,9 @@ namespace PEAK_Menu.Commands
                 RegisterCommand(new CustomizationCommand());
                 RegisterCommand(new TeleportCommand());
                 
+                // Admin commands
+                RegisterCommand(new AdminCommand());
+                
                 Plugin.Log.LogInfo($"Registered {_commands.Count} commands successfully");
             }
             catch (Exception ex)
