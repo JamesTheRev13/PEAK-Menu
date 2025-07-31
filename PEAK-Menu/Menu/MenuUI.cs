@@ -201,7 +201,9 @@ namespace PEAK_Menu.Menu
                 return;
             }
 
+            // === PLAYER INFORMATION SECTION ===
             GUILayout.Label("=== Player Information ===");
+            GUILayout.Label($"Name: {character.characterName}");
             GUILayout.Label($"Position: {character.Center}");
             GUILayout.Label($"Health: {(1f - character.refs.afflictions.GetCurrentStatus(CharacterAfflictions.STATUSTYPE.Injury)) * 100:F1}%");
             GUILayout.Label($"Stamina: {character.GetTotalStamina() * 100:F1}%");
@@ -213,12 +215,92 @@ namespace PEAK_Menu.Menu
             
             GUILayout.Space(10);
             
-            // Enhanced Player Modifications Section
+            // === HEALTH & STATUS MANAGEMENT ===
+            GUILayout.Label("=== Health & Status Management ===");
+            
+            GUILayout.BeginHorizontal();
+            if (GUILayout.Button("Full Heal", GUILayout.Width(100)))
+            {
+                character.refs.afflictions.SetStatus(CharacterAfflictions.STATUSTYPE.Injury, 0f);
+                character.AddStamina(1f);
+                AddToConsole("[PLAYER] Player fully healed");
+            }
+            if (GUILayout.Button("Clear All Status Effects", GUILayout.Width(160)))
+            {
+                character.refs.afflictions.ClearAllStatus(excludeCurse: false);
+                AddToConsole("[PLAYER] All status effects cleared");
+            }
+            GUILayout.EndHorizontal();
+            
+            GUILayout.Space(10);
+            
+            // === APPEARANCE & CUSTOMIZATION ===
+            GUILayout.Label("=== Appearance & Customization ===");
+            
+            if (GUILayout.Button("Randomize Appearance", GUILayout.Width(160)))
+            {
+                character.refs.customization.RandomizeCosmetics();
+                AddToConsole("[PLAYER] Character appearance randomized");
+            }
+
+            // RAINBOW CONTROLS SECTION
+            var rainbowManager = _menuManager.GetRainbowManager();
+            if (rainbowManager != null)
+            {
+                var isRainbowEnabled = rainbowManager.IsRainbowEnabled;
+                
+                // Rainbow toggle with standardized button and unique ID
+                if (DrawToggleButton("Rainbow Effect", isRainbowEnabled, 0, 104))
+                {
+                    rainbowManager.ToggleRainbow();
+                    AddToConsole($"[PLAYER] Rainbow effect {(rainbowManager.IsRainbowEnabled ? "enabled" : "disabled")}");
+                }
+                
+                // Speed controls - show when enabled
+                if (isRainbowEnabled)
+                {
+                    GUILayout.Space(5);
+                    GUILayout.Label("Rainbow Speed:");
+                    GUILayout.BeginHorizontal();
+                    if (GUILayout.Button("Slow", GUILayout.Width(60)))
+                    {
+                        rainbowManager.SetRainbowSpeed(0.5f);
+                        AddToConsole("[PLAYER] Rainbow speed: Slow");
+                    }
+                    if (GUILayout.Button("Normal", GUILayout.Width(60)))
+                    {
+                        rainbowManager.SetRainbowSpeed(1.0f);
+                        AddToConsole("[PLAYER] Rainbow speed: Normal");
+                    }
+                    if (GUILayout.Button("Fast", GUILayout.Width(60)))
+                    {
+                        rainbowManager.SetRainbowSpeed(2.0f);
+                        AddToConsole("[PLAYER] Rainbow speed: Fast");
+                    }
+                    if (GUILayout.Button("CRAZY!", GUILayout.Width(60)))
+                    {
+                        rainbowManager.SetRainbowSpeed(5.0f);
+                        AddToConsole("[PLAYER] Rainbow speed: CRAZY!");
+                    }
+                    GUILayout.EndHorizontal();
+                }
+            }
+            else
+            {
+                GUILayout.Label("Rainbow manager not available");
+            }
+            
+            GUILayout.Space(10);
+            
+            // === PLAYER MODIFICATIONS ===
             GUILayout.Label("=== Player Modifications ===");
             
             var playerManager = _menuManager.GetPlayerManager();
             if (playerManager != null)
             {
+                // Protection Toggles
+                GUILayout.Label("Protection Settings:");
+                
                 // No Fall Damage - Updated with standardized toggle and unique ID
                 var isNoFallEnabled = playerManager.NoFallDamageEnabled;
                 if (DrawToggleButton("No Fall Damage", isNoFallEnabled, 0, 101))
@@ -245,9 +327,10 @@ namespace PEAK_Menu.Menu
                 
                 GUILayout.Space(10);
                 
-                // Movement Speed Controls
-                GUILayout.Label("=== Movement Controls ===");
+                // === MOVEMENT ENHANCEMENT ===
+                GUILayout.Label("=== Movement Enhancement ===");
                 
+                // Movement Speed Controls
                 GUILayout.BeginHorizontal();
                 GUILayout.Label("Speed:", GUILayout.Width(60));
                 var currentSpeed = Plugin.PluginConfig.MovementSpeedMultiplier.Value;
@@ -288,77 +371,61 @@ namespace PEAK_Menu.Menu
                 }
                 GUILayout.Label($"{newClimb:F2}x", GUILayout.Width(50));
                 GUILayout.EndHorizontal();
-            }
-            
-            GUILayout.Space(10);
-            
-            if (GUILayout.Button("Randomize Appearance"))
-            {
-                character.refs.customization.RandomizeCosmetics();
-                AddToConsole("[INFO] Character appearance randomized");
-            }
-            
-            if (GUILayout.Button("Clear All Status Effects"))
-            {
-                character.refs.afflictions.ClearAllStatus(excludeCurse: false);
-                AddToConsole("[INFO] All status effects cleared");
-            }
-            
-            if (GUILayout.Button("Full Heal"))
-            {
-                character.refs.afflictions.SetStatus(CharacterAfflictions.STATUSTYPE.Injury, 0f);
-                character.AddStamina(1f);
-                AddToConsole("[INFO] Player fully healed");
-            }
-
-            // RAINBOW CONTROLS SECTION - Updated with standardized toggle
-            GUILayout.Space(15);
-            GUILayout.Label("=== Rainbow Effect ===");
-            
-            var rainbowManager = _menuManager.GetRainbowManager();
-            if (rainbowManager != null)
-            {
-                var isRainbowEnabled = rainbowManager.IsRainbowEnabled;
                 
-                // Rainbow toggle with standardized button and unique ID
-                if (DrawToggleButton("Rainbow Effect", isRainbowEnabled, 0, 104))
+                // Movement preset buttons for quick setup
+                GUILayout.Space(5);
+                GUILayout.Label("Movement Presets:");
+                GUILayout.BeginHorizontal();
+                
+                if (GUILayout.Button("Normal", GUILayout.Width(60)))
                 {
-                    rainbowManager.ToggleRainbow();
-                    AddToConsole($"[INFO] Rainbow effect {(rainbowManager.IsRainbowEnabled ? "enabled" : "disabled")}");
+                    Plugin.PluginConfig.MovementSpeedMultiplier.Value = 1.0f;
+                    Plugin.PluginConfig.JumpHeightMultiplier.Value = 1.0f;
+                    Plugin.PluginConfig.ClimbSpeedMultiplier.Value = 1.0f;
+                    playerManager.SetMovementSpeedMultiplier(1.0f);
+                    playerManager.SetJumpHeightMultiplier(1.0f);
+                    playerManager.SetClimbSpeedMultiplier(1.0f);
+                    AddToConsole("[PLAYER] Movement preset: Normal (1x)");
                 }
                 
-                // Speed controls - show when enabled
-                if (isRainbowEnabled)
+                if (GUILayout.Button("Enhanced", GUILayout.Width(60)))
                 {
-                    GUILayout.Space(5);
-                    GUILayout.Label("Rainbow Speed:");
-                    GUILayout.BeginHorizontal();
-                    if (GUILayout.Button("Slow", GUILayout.Width(60)))
-                    {
-                        rainbowManager.SetRainbowSpeed(0.5f);
-                        AddToConsole("[INFO] Rainbow speed: Slow");
-                    }
-                    if (GUILayout.Button("Normal", GUILayout.Width(60)))
-                    {
-                        rainbowManager.SetRainbowSpeed(1.0f);
-                        AddToConsole("[INFO] Rainbow speed: Normal");
-                    }
-                    if (GUILayout.Button("Fast", GUILayout.Width(60)))
-                    {
-                        rainbowManager.SetRainbowSpeed(2.0f);
-                        AddToConsole("[INFO] Rainbow speed: Fast");
-                    }
-                    if (GUILayout.Button("CRAZY!", GUILayout.Width(60)))
-                    {
-                        rainbowManager.SetRainbowSpeed(5.0f);
-                        AddToConsole("[INFO] Rainbow speed: CRAZY!");
-                    }
-                    GUILayout.EndHorizontal();
+                    Plugin.PluginConfig.MovementSpeedMultiplier.Value = 2.0f;
+                    Plugin.PluginConfig.JumpHeightMultiplier.Value = 1.5f;
+                    Plugin.PluginConfig.ClimbSpeedMultiplier.Value = 2.0f;
+                    playerManager.SetMovementSpeedMultiplier(2.0f);
+                    playerManager.SetJumpHeightMultiplier(1.5f);
+                    playerManager.SetClimbSpeedMultiplier(2.0f);
+                    AddToConsole("[PLAYER] Movement preset: Enhanced");
                 }
+                
+                if (GUILayout.Button("Super", GUILayout.Width(60)))
+                {
+                    Plugin.PluginConfig.MovementSpeedMultiplier.Value = 4.0f;
+                    Plugin.PluginConfig.JumpHeightMultiplier.Value = 3.0f;
+                    Plugin.PluginConfig.ClimbSpeedMultiplier.Value = 4.0f;
+                    playerManager.SetMovementSpeedMultiplier(4.0f);
+                    playerManager.SetJumpHeightMultiplier(3.0f);
+                    playerManager.SetClimbSpeedMultiplier(4.0f);
+                    AddToConsole("[PLAYER] Movement preset: Super");
+                }
+                
+                if (GUILayout.Button("Extreme", GUILayout.Width(60)))
+                {
+                    Plugin.PluginConfig.MovementSpeedMultiplier.Value = 8.0f;
+                    Plugin.PluginConfig.JumpHeightMultiplier.Value = 5.0f;
+                    Plugin.PluginConfig.ClimbSpeedMultiplier.Value = 8.0f;
+                    playerManager.SetMovementSpeedMultiplier(8.0f);
+                    playerManager.SetJumpHeightMultiplier(5.0f);
+                    playerManager.SetClimbSpeedMultiplier(8.0f);
+                    AddToConsole("[PLAYER] Movement preset: Extreme");
+                }
+                
+                GUILayout.EndHorizontal();
             }
             else
             {
-                GUILayout.Label("Rainbow manager not available");
+                GUILayout.Label("Player manager not available");
             }
 
             // Add some extra space at the bottom for better scrolling
