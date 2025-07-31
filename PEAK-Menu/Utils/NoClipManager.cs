@@ -8,14 +8,22 @@ namespace PEAK_Menu.Utils
         private float _noClipSpeed = 10f;
         private float _noClipFastSpeed = 25f;
         private bool _wasPreviouslyGrounded = false;
-        private Vector3 _originalGravity;
-        private bool _originalUseGravity = true;
 
         private static System.Reflection.MethodInfo _canDoInputMethod;
+
+        // Store original physics states for restoration
+        private System.Collections.Generic.Dictionary<Rigidbody, PhysicsState> _originalStates;
 
         public bool IsNoClipEnabled => _noClipEnabled;
         public float NoClipSpeed => _noClipSpeed;
         public float NoClipFastSpeed => _noClipFastSpeed;
+
+        private struct PhysicsState
+        {
+            public bool useGravity;
+            public bool isKinematic;
+            public RigidbodyConstraints constraints;
+        }
 
         static NoClipManager()
         {
@@ -28,6 +36,11 @@ namespace PEAK_Menu.Utils
             {
                 Plugin.Log?.LogWarning($"Could not find CanDoInput method: {ex.Message}");
             }
+        }
+
+        public NoClipManager()
+        {
+            _originalStates = new System.Collections.Generic.Dictionary<Rigidbody, PhysicsState>();
         }
 
         public void EnableNoClip()
@@ -45,11 +58,12 @@ namespace PEAK_Menu.Utils
             
             // Store original states
             _wasPreviouslyGrounded = character.data.isGrounded;
+            StoreOriginalPhysicsStates(character);
             
             // Disable collision for all body parts
             SetCollisionEnabled(character, false);
             
-            // Disable gravity and physics
+            // Disable gravity and physics properly
             SetPhysicsEnabled(character, false);
             
             Plugin.Log.LogInfo("NoClip enabled");
@@ -73,6 +87,9 @@ namespace PEAK_Menu.Utils
             
             // Re-enable gravity and physics
             SetPhysicsEnabled(character, true);
+            
+            // Clear stored states
+            _originalStates.Clear();
             
             Plugin.Log.LogInfo("NoClip disabled");
         }
@@ -104,6 +121,25 @@ namespace PEAK_Menu.Utils
 
             // Handle NoClip movement
             HandleNoClipMovement(character);
+        }
+
+        private void StoreOriginalPhysicsStates(Character character)
+        {
+            _originalStates.Clear();
+            
+            foreach (var bodypart in character.refs.ragdoll.partList)
+            {
+                if (bodypart?.Rig != null)
+                {
+                    var rigidbody = bodypart.Rig;
+                    _originalStates[rigidbody] = new PhysicsState
+                    {
+                        useGravity = rigidbody.useGravity,
+                        isKinematic = rigidbody.isKinematic,
+                        constraints = rigidbody.constraints
+                    };
+                }
+            }
         }
 
         private bool CanProcessInput(Character character)
@@ -143,7 +179,6 @@ namespace PEAK_Menu.Utils
             // Calculate movement direction based on camera look direction
             var lookDirection = character.data.lookDirection;
             var lookRight = character.data.lookDirection_Right;
-            var lookUp = character.data.lookDirection_Up;
 
             // Get movement input
             var moveVector = Vector3.zero;
@@ -188,20 +223,30 @@ namespace PEAK_Menu.Utils
             
             if (movement != Vector3.zero)
             {
-                // Move all body parts
+                // Move the entire character
                 MoveCharacter(character, movement);
             }
         }
 
         private void MoveCharacter(Character character, Vector3 movement)
         {
-            // Move all ragdoll parts
+            // Move the entire character transform instead of individual body parts
+            // This maintains the ragdoll's relative positions
+            character.transform.position += movement;
+            
+            // Also move all ragdoll parts to ensure consistency
             foreach (var bodypart in character.refs.ragdoll.partList)
             {
                 if (bodypart?.Rig != null)
                 {
                     bodypart.Rig.position += movement;
-                    bodypart.Rig.linearVelocity = Vector3.zero; // Stop any residual velocity
+                    
+                    // Only clear velocities if not kinematic (to avoid warnings)
+                    if (!bodypart.Rig.isKinematic)
+                    {
+                        bodypart.Rig.linearVelocity = Vector3.zero;
+                        bodypart.Rig.angularVelocity = Vector3.zero;
+                    }
                 }
             }
         }
@@ -243,18 +288,34 @@ namespace PEAK_Menu.Utils
                         
                         if (enabled)
                         {
-                            // Re-enable physics
-                            rigidbody.useGravity = true;
-                            rigidbody.isKinematic = false;
-                            rigidbody.constraints = RigidbodyConstraints.None;
+                            // Restore original physics states
+                            if (_originalStates.TryGetValue(rigidbody, out var originalState))
+                            {
+                                rigidbody.isKinematic = originalState.isKinematic;
+                                rigidbody.useGravity = originalState.useGravity;
+                                rigidbody.constraints = originalState.constraints;
+                            }
+                            else
+                            {
+                                // Fallback to reasonable defaults
+                                rigidbody.isKinematic = false;
+                                rigidbody.useGravity = true;
+                                rigidbody.constraints = RigidbodyConstraints.None;
+                            }
                         }
                         else
                         {
-                            // Disable physics
+                            // Clear velocities before making kinematic (to avoid warnings)
+                            if (!rigidbody.isKinematic)
+                            {
+                                rigidbody.linearVelocity = Vector3.zero;
+                                rigidbody.angularVelocity = Vector3.zero;
+                            }
+                            
+                            // Disable physics for NoClip
                             rigidbody.useGravity = false;
                             rigidbody.isKinematic = true;
-                            rigidbody.linearVelocity = Vector3.zero;
-                            rigidbody.angularVelocity = Vector3.zero;
+                            rigidbody.constraints = RigidbodyConstraints.FreezeAll;
                         }
                     }
                 }
