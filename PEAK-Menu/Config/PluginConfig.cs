@@ -1,4 +1,4 @@
-        using BepInEx.Configuration;
+using BepInEx.Configuration;
 using UnityEngine;
 
 namespace PEAK_Menu.Config
@@ -15,6 +15,7 @@ namespace PEAK_Menu.Config
         public ConfigEntry<float> MovementSpeedMultiplier { get; }
         public ConfigEntry<float> JumpHeightMultiplier { get; }
         public ConfigEntry<float> ClimbSpeedMultiplier { get; }
+        public ConfigEntry<bool> TeleportToPingEnabled { get; private set; }
 
         public PluginConfig(ConfigFile config)
         {
@@ -28,6 +29,7 @@ namespace PEAK_Menu.Config
             MovementSpeedMultiplier = config.Bind("Player", "MovementSpeedMultiplier", 1.0f, new ConfigDescription("Movement speed multiplier", new AcceptableValueRange<float>(0.1f, 20.0f)));
             JumpHeightMultiplier = config.Bind("Player", "JumpHeightMultiplier", 1.0f, new ConfigDescription("Jump height multiplier", new AcceptableValueRange<float>(0.1f, 10.0f)));
             ClimbSpeedMultiplier = config.Bind("Player", "ClimbSpeedMultiplier", 1.0f, new ConfigDescription("Climb speed multiplier", new AcceptableValueRange<float>(0.1f, 20.0f)));
+            TeleportToPingEnabled = config.Bind("Features", "TeleportToPing", false, "Enable teleporting to marker points when you ping them");
         }
     }
 }

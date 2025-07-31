@@ -284,6 +284,24 @@ namespace PEAK_Menu.Menu
                 AddToConsole($"[PLAYER] Infinite stamina {(!isInfiniteStamEnabled ? "enabled" : "disabled")}");
             }
 
+            // Teleport to Ping Toggle
+            var isTeleportToPingEnabled = Plugin.PluginConfig?.TeleportToPingEnabled?.Value ?? false;
+            if (DrawToggleButton("Teleport to Ping", isTeleportToPingEnabled, 0, 305))
+            {
+                Plugin.PluginConfig.TeleportToPingEnabled.Value = !isTeleportToPingEnabled;
+                AddToConsole($"[PLAYER] Teleport to ping {(!isTeleportToPingEnabled ? "enabled" : "disabled")}");
+                
+                if (!isTeleportToPingEnabled)
+                {
+                    AddToConsole("[INFO] You will now teleport to locations when you ping them");
+                    AddToConsole("[INFO] Hold ping key and click to place marker and teleport");
+                }
+                else
+                {
+                    AddToConsole("[INFO] Ping will work normally without teleporting");
+                }
+            }
+
             // NoClip controls
             DrawNoClipControls();
 

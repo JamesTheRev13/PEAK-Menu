@@ -87,7 +87,8 @@ namespace PEAK_Menu.Commands
                 // Game interaction commands
                 RegisterCommand(new CustomizationCommand());
                 RegisterCommand(new TeleportCommand());
-                
+                RegisterCommand(new TeleportToPingCommand());
+
                 // Admin commands
                 RegisterCommand(new AdminCommand());
                 
