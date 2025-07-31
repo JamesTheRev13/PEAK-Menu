@@ -113,10 +113,10 @@ namespace PEAK_Menu.Menu
             GUILayout.EndHorizontal();
             
             // Auto-focus console input when console tab is active
-            if (_selectedTab == 0)
-            {
-                GUI.FocusControl("ConsoleInput");
-            }
+            //if (_selectedTab == 0)
+            //{
+            //    GUI.FocusControl("ConsoleInput");
+            //}
         }
 
         private void DrawPlayerTab()
@@ -254,7 +254,7 @@ namespace PEAK_Menu.Menu
             _consoleInput = "";
             
             // Keep focus on console input after command execution
-            GUI.FocusControl("ConsoleInput");
+            //GUI.FocusControl("ConsoleInput");
         }
 
         public void AddToConsole(string message)
