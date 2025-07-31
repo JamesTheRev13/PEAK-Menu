@@ -324,7 +324,7 @@ namespace PEAK_Menu.Menu
             
             GUILayout.EndHorizontal();
 
-            // NoClip controls
+            // NoClip controls - UPDATED SECTION
             GUILayout.Space(10);
             GUILayout.Label("=== Movement Controls ===");
 
@@ -355,44 +355,78 @@ namespace PEAK_Menu.Menu
                 
                 GUILayout.EndHorizontal();
                 
-                // Speed controls when enabled
+                // Enhanced controls when enabled
                 if (isNoClipEnabled)
                 {
                     GUILayout.Space(5);
-                    GUILayout.Label("NoClip Speed Controls:");
+                    GUILayout.Label("NoClip Force Controls:");
                     
+                    // Base Force Control
                     GUILayout.BeginHorizontal();
-                    GUILayout.Label($"Speed: {noClipManager.NoClipSpeed:F1}", GUILayout.Width(80));
+                    GUILayout.Label($"Base Force: {noClipManager.VerticalForce:F0}", GUILayout.Width(100));
                     
-                    if (GUILayout.Button("-", GUILayout.Width(30)))
+                    if (GUILayout.Button("-", GUILayout.Width(25)))
                     {
-                        var newSpeed = Mathf.Max(1f, noClipManager.NoClipSpeed - 2f);
-                        noClipManager.SetNoClipSpeed(newSpeed);
-                        AddToConsole($"[ADMIN] NoClip speed: {newSpeed:F1}");
+                        var newForce = Mathf.Max(100f, noClipManager.VerticalForce - 100f);
+                        noClipManager.SetVerticalForce(newForce);
+                        AddToConsole($"[ADMIN] NoClip base force: {newForce:F0}");
                     }
-                    if (GUILayout.Button("+", GUILayout.Width(30)))
+                    if (GUILayout.Button("+", GUILayout.Width(25)))
                     {
-                        var newSpeed = Mathf.Min(100f, noClipManager.NoClipSpeed + 2f);
-                        noClipManager.SetNoClipSpeed(newSpeed);
-                        AddToConsole($"[ADMIN] NoClip speed: {newSpeed:F1}");
+                        var newForce = Mathf.Min(2000f, noClipManager.VerticalForce + 100f);
+                        noClipManager.SetVerticalForce(newForce);
+                        AddToConsole($"[ADMIN] NoClip base force: {newForce:F0}");
                     }
                     GUILayout.EndHorizontal();
                     
+                    // Sprint Multiplier Control
                     GUILayout.BeginHorizontal();
-                    GUILayout.Label($"Fast: {noClipManager.NoClipFastSpeed:F1}", GUILayout.Width(80));
+                    GUILayout.Label($"Sprint Mult: {noClipManager.SprintMultiplier:F1}x", GUILayout.Width(100));
                     
-                    if (GUILayout.Button("-", GUILayout.Width(30)))
+                    if (GUILayout.Button("-", GUILayout.Width(25)))
                     {
-                        var newSpeed = Mathf.Max(5f, noClipManager.NoClipFastSpeed - 5f);
-                        noClipManager.SetNoClipFastSpeed(newSpeed);
-                        AddToConsole($"[ADMIN] NoClip fast speed: {newSpeed:F1}");
+                        var newMult = Mathf.Max(1f, noClipManager.SprintMultiplier - 0.5f);
+                        noClipManager.SetSprintMultiplier(newMult);
+                        AddToConsole($"[ADMIN] NoClip sprint multiplier: {newMult:F1}x");
                     }
-                    if (GUILayout.Button("+", GUILayout.Width(30)))
+                    if (GUILayout.Button("+", GUILayout.Width(25)))
                     {
-                        var newSpeed = Mathf.Min(200f, noClipManager.NoClipFastSpeed + 5f);
-                        noClipManager.SetNoClipFastSpeed(newSpeed);
-                        AddToConsole($"[ADMIN] NoClip fast speed: {newSpeed:F1}");
+                        var newMult = Mathf.Min(10f, noClipManager.SprintMultiplier + 0.5f);
+                        noClipManager.SetSprintMultiplier(newMult);
+                        AddToConsole($"[ADMIN] NoClip sprint multiplier: {newMult:F1}x");
                     }
+                    GUILayout.EndHorizontal();
+                    
+                    // Preset buttons
+                    GUILayout.Space(5);
+                    GUILayout.Label("Presets:");
+                    GUILayout.BeginHorizontal();
+                    
+                    if (GUILayout.Button("Slow", GUILayout.Width(50)))
+                    {
+                        noClipManager.SetVerticalForce(400f);
+                        noClipManager.SetSprintMultiplier(2f);
+                        AddToConsole("[ADMIN] NoClip preset: Slow");
+                    }
+                    if (GUILayout.Button("Normal", GUILayout.Width(50)))
+                    {
+                        noClipManager.SetVerticalForce(800f);
+                        noClipManager.SetSprintMultiplier(4f);
+                        AddToConsole("[ADMIN] NoClip preset: Normal");
+                    }
+                    if (GUILayout.Button("Fast", GUILayout.Width(50)))
+                    {
+                        noClipManager.SetVerticalForce(1200f);
+                        noClipManager.SetSprintMultiplier(6f);
+                        AddToConsole("[ADMIN] NoClip preset: Fast");
+                    }
+                    if (GUILayout.Button("Turbo", GUILayout.Width(50)))
+                    {
+                        noClipManager.SetVerticalForce(1600f);
+                        noClipManager.SetSprintMultiplier(8f);
+                        AddToConsole("[ADMIN] NoClip preset: Turbo");
+                    }
+                    
                     GUILayout.EndHorizontal();
                     
                     GUILayout.Space(5);
