@@ -34,10 +34,22 @@ namespace PEAK_Menu.Menu
         {
             try
             {
+                // Handle menu toggle
                 if (Plugin.PluginConfig?.MenuToggleKey?.Value != null && 
                     Input.GetKeyDown(Plugin.PluginConfig.MenuToggleKey.Value))
                 {
                     ToggleMenu();
+                }
+
+                // Handle NoClip toggle hotkey
+                if (Plugin.PluginConfig?.NoClipToggleKey?.Value != null && 
+                    Input.GetKeyDown(Plugin.PluginConfig.NoClipToggleKey.Value))
+                {
+                    if (_noClipManager != null)
+                    {
+                        _noClipManager.ToggleNoClip();
+                        AddToConsole($"[HOTKEY] NoClip {(_noClipManager.IsNoClipEnabled ? "enabled" : "disabled")}");
+                    }
                 }
 
                 // Update effects

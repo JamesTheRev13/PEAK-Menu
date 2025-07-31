@@ -279,58 +279,49 @@ namespace PEAK_Menu.Menu
             GUILayout.Space(10);
             GUILayout.Label("=== Self Administration ===");
             
+            // God Mode Toggle Button
             GUILayout.BeginHorizontal();
-            if (GUILayout.Button("God Mode ON", GUILayout.Width(100)))
+            var isGodModeEnabled = localCharacter.statusesLocked;
+            var godModeButtonText = isGodModeEnabled ? "God Mode OFF" : "God Mode ON";
+            var godModeButtonColor = isGodModeEnabled ? Color.red : Color.green;
+            
+            var originalColor = GUI.backgroundColor;
+            GUI.backgroundColor = godModeButtonColor;
+            
+            if (GUILayout.Button(godModeButtonText, GUILayout.Width(130)))
             {
-                if (!localCharacter.statusesLocked)
-                {
-                    Character.LockStatuses();
-                    AddToConsole("[ADMIN] God mode enabled for you");
-                }
-                else
-                {
-                    AddToConsole("[ADMIN] God mode already enabled");
-                }
+                Character.LockStatuses();
+                AddToConsole($"[ADMIN] God mode {(localCharacter.statusesLocked ? "enabled" : "disabled")}");
             }
-            if (GUILayout.Button("God Mode OFF", GUILayout.Width(100)))
-            {
-                if (localCharacter.statusesLocked)
-                {
-                    Character.LockStatuses();
-                    AddToConsole("[ADMIN] God mode disabled for you");
-                }
-                else
-                {
-                    AddToConsole("[ADMIN] God mode already disabled");
-                }
-            }
+            
+            GUI.backgroundColor = originalColor;
+            
+            // God Mode Status
+            var godModeStatus = isGodModeEnabled ? "ENABLED" : "Disabled";
+            GUILayout.Label($"God Mode: {godModeStatus}", GUILayout.Width(120));
+            
             GUILayout.EndHorizontal();
             
+            // Infinite Stamina Toggle Button
             GUILayout.BeginHorizontal();
-            if (GUILayout.Button("Infinite Stamina ON", GUILayout.Width(130)))
+            var isInfiniteStamEnabled = localCharacter.infiniteStam;
+            var infiniteStamButtonText = isInfiniteStamEnabled ? "Infinite Stamina OFF" : "Infinite Stamina ON";
+            var infiniteStamButtonColor = isInfiniteStamEnabled ? Color.red : Color.green;
+            
+            GUI.backgroundColor = infiniteStamButtonColor;
+            
+            if (GUILayout.Button(infiniteStamButtonText, GUILayout.Width(160)))
             {
-                if (!localCharacter.infiniteStam)
-                {
-                    Character.InfiniteStamina();
-                    AddToConsole("[ADMIN] Infinite stamina enabled for you");
-                }
-                else
-                {
-                    AddToConsole("[ADMIN] Infinite stamina already enabled");
-                }
+                Character.InfiniteStamina();
+                AddToConsole($"[ADMIN] Infinite stamina {(localCharacter.infiniteStam ? "enabled" : "disabled")}");
             }
-            if (GUILayout.Button("Infinite Stamina OFF", GUILayout.Width(130)))
-            {
-                if (localCharacter.infiniteStam)
-                {
-                    Character.InfiniteStamina();
-                    AddToConsole("[ADMIN] Infinite stamina disabled for you");
-                }
-                else
-                {
-                    AddToConsole("[ADMIN] Infinite stamina already disabled");
-                }
-            }
+            
+            GUI.backgroundColor = originalColor;
+            
+            // Infinite Stamina Status
+            var infiniteStamStatus = isInfiniteStamEnabled ? "ENABLED" : "Disabled";
+            GUILayout.Label($"Infinite Stamina: {infiniteStamStatus}", GUILayout.Width(120));
+            
             GUILayout.EndHorizontal();
 
             // NoClip controls
@@ -342,12 +333,11 @@ namespace PEAK_Menu.Menu
             {
                 var isNoClipEnabled = noClipManager.IsNoClipEnabled;
                 
-                // NoClip toggle
+                // NoClip toggle with hotkey info
                 GUILayout.BeginHorizontal();
                 var noClipButtonText = isNoClipEnabled ? "NoClip OFF" : "NoClip ON";
                 var noClipButtonColor = isNoClipEnabled ? Color.red : Color.green;
                 
-                var originalColor = GUI.backgroundColor;
                 GUI.backgroundColor = noClipButtonColor;
                 
                 if (GUILayout.Button(noClipButtonText, GUILayout.Width(100)))
@@ -358,9 +348,10 @@ namespace PEAK_Menu.Menu
                 
                 GUI.backgroundColor = originalColor;
                 
-                // Status display
+                // Status display with hotkey
                 var statusText = isNoClipEnabled ? "ENABLED" : "Disabled";
-                GUILayout.Label($"NoClip: {statusText}", GUILayout.Width(100));
+                var hotkeyText = Plugin.PluginConfig?.NoClipToggleKey?.Value.ToString() ?? "Delete";
+                GUILayout.Label($"NoClip: {statusText} (Hotkey: {hotkeyText})", GUILayout.Width(200));
                 
                 GUILayout.EndHorizontal();
                 
@@ -473,6 +464,12 @@ namespace PEAK_Menu.Menu
             GUILayout.Label("=== Your Admin Status ===");
             GUILayout.Label($"God Mode: {(localCharacter.statusesLocked ? "ON" : "OFF")}");
             GUILayout.Label($"Infinite Stamina: {(localCharacter.infiniteStam ? "ON" : "OFF")}");
+            GUILayout.Label($"NoClip: {(noClipManager?.IsNoClipEnabled == true ? "ON" : "OFF")}");
+            
+            GUILayout.Space(10);
+            GUILayout.Label("=== Hotkeys ===");
+            GUILayout.Label($"Toggle Menu: {Plugin.PluginConfig?.MenuToggleKey?.Value.ToString() ?? "Insert"}");
+            GUILayout.Label($"Toggle NoClip: {Plugin.PluginConfig?.NoClipToggleKey?.Value.ToString() ?? "Delete"}");
             
             GUILayout.Space(10);
             GUILayout.Label("Use console for advanced admin commands");
