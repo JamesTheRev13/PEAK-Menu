@@ -1,5 +1,6 @@
-using System.Linq;
+﻿using System.Linq;
 using UnityEngine;
+using PEAK_Menu.Utils;
 
 namespace PEAK_Menu.Menu
 {
@@ -17,6 +18,15 @@ namespace PEAK_Menu.Menu
         private Vector2 _playerTabScrollPosition;
         private Vector2 _environmentTabScrollPosition;
         private Vector2 _adminTabScrollPosition;
+
+        // Add persistent state for teleport coordinates
+        private static float _teleportX = 0f;
+        private static float _teleportY = 0f;
+        private static float _teleportZ = 0f;
+        
+        // Add persistent state for advanced player management
+        private static string _targetPlayerName = "";
+        private static float _statusValue = 0.5f;
 
         public MenuUI(MenuManager menuManager)
         {
@@ -153,6 +163,95 @@ namespace PEAK_Menu.Menu
             
             GUILayout.Space(10);
             
+            // Enhanced Player Modifications Section
+            GUILayout.Label("=== Player Modifications ===");
+            
+            var playerManager = _menuManager.GetPlayerManager();
+            if (playerManager != null)
+            {
+                // No Fall Damage
+                var originalColor = GUI.backgroundColor;
+                var isNoFallEnabled = playerManager.NoFallDamageEnabled;
+                GUI.backgroundColor = isNoFallEnabled ? Color.green : Color.red;
+                
+                if (GUILayout.Button(isNoFallEnabled ? "No Fall Damage OFF" : "No Fall Damage ON"))
+                {
+                    playerManager.SetNoFallDamage(!isNoFallEnabled);
+                    AddToConsole($"[PLAYER] No fall damage {(!isNoFallEnabled ? "enabled" : "disabled")}");
+                }
+                GUI.backgroundColor = originalColor;
+                
+                // No Weight
+                var isNoWeightEnabled = playerManager.NoWeightEnabled;
+                GUI.backgroundColor = isNoWeightEnabled ? Color.green : Color.red;
+                
+                if (GUILayout.Button(isNoWeightEnabled ? "No Weight OFF" : "No Weight ON"))
+                {
+                    playerManager.SetNoWeight(!isNoWeightEnabled);
+                    AddToConsole($"[PLAYER] No weight {(!isNoWeightEnabled ? "enabled" : "disabled")}");
+                }
+                GUI.backgroundColor = originalColor;
+                
+                // Affliction Immunity
+                var isAfflictionImmune = playerManager.AfflictionImmunityEnabled;
+                GUI.backgroundColor = isAfflictionImmune ? Color.green : Color.red;
+                
+                if (GUILayout.Button(isAfflictionImmune ? "Affliction Immunity OFF" : "Affliction Immunity ON"))
+                {
+                    playerManager.SetAfflictionImmunity(!isAfflictionImmune);
+                    AddToConsole($"[PLAYER] Affliction immunity {(!isAfflictionImmune ? "enabled" : "disabled")}");
+                }
+                GUI.backgroundColor = originalColor;
+                
+                GUILayout.Space(10);
+                
+                // Movement Speed Controls
+                GUILayout.Label("=== Movement Controls ===");
+                
+                GUILayout.BeginHorizontal();
+                GUILayout.Label("Speed:", GUILayout.Width(60));
+                var currentSpeed = Plugin.PluginConfig.MovementSpeedMultiplier.Value;
+                var newSpeed = GUILayout.HorizontalSlider(currentSpeed, 0.1f, 20f, GUILayout.Width(150));
+                if (Mathf.Abs(newSpeed - currentSpeed) > 0.01f)
+                {
+                    Plugin.PluginConfig.MovementSpeedMultiplier.Value = newSpeed;
+                    playerManager.SetMovementSpeedMultiplier(newSpeed);
+                    AddToConsole($"[PLAYER] Movement speed: {newSpeed:F2}x");
+                }
+                GUILayout.Label($"{newSpeed:F2}x", GUILayout.Width(50));
+                GUILayout.EndHorizontal();
+                
+                // Jump Height Controls
+                GUILayout.BeginHorizontal();
+                GUILayout.Label("Jump:", GUILayout.Width(60));
+                var currentJump = Plugin.PluginConfig.JumpHeightMultiplier.Value;
+                var newJump = GUILayout.HorizontalSlider(currentJump, 0.1f, 10f, GUILayout.Width(150));
+                if (Mathf.Abs(newJump - currentJump) > 0.01f)
+                {
+                    Plugin.PluginConfig.JumpHeightMultiplier.Value = newJump;
+                    playerManager.SetJumpHeightMultiplier(newJump);
+                    AddToConsole($"[PLAYER] Jump height: {newJump:F2}x");
+                }
+                GUILayout.Label($"{newJump:F2}x", GUILayout.Width(50));
+                GUILayout.EndHorizontal();
+                
+                // Climb Speed Controls
+                GUILayout.BeginHorizontal();
+                GUILayout.Label("Climb:", GUILayout.Width(60));
+                var currentClimb = Plugin.PluginConfig.ClimbSpeedMultiplier.Value;
+                var newClimb = GUILayout.HorizontalSlider(currentClimb, 0.1f, 20f, GUILayout.Width(150));
+                if (Mathf.Abs(newClimb - currentClimb) > 0.01f)
+                {
+                    Plugin.PluginConfig.ClimbSpeedMultiplier.Value = newClimb;
+                    playerManager.SetClimbSpeedMultiplier(newClimb);
+                    AddToConsole($"[PLAYER] Climb speed: {newClimb:F2}x");
+                }
+                GUILayout.Label($"{newClimb:F2}x", GUILayout.Width(50));
+                GUILayout.EndHorizontal();
+            }
+            
+            GUILayout.Space(10);
+            
             if (GUILayout.Button("Randomize Appearance"))
             {
                 character.refs.customization.RandomizeCosmetics();
@@ -286,22 +385,56 @@ namespace PEAK_Menu.Menu
                 return;
             }
 
-            // Quick Actions Section
+            // Quick Actions Section - ENHANCED using AdminUIHelper
             GUILayout.Space(10);
             GUILayout.Label("=== Quick Actions ===");
             
             GUILayout.BeginHorizontal();
             if (GUILayout.Button("Emergency Heal All", GUILayout.Width(150)))
             {
-                ExecuteAdminCommand("admin emergency-heal-all");
+                AdminUIHelper.ExecuteQuickAction("heal-all");
+                AddToConsole("[ADMIN] Emergency heal all executed");
             }
             if (GUILayout.Button("List All Players", GUILayout.Width(150)))
             {
-                ExecuteAdminCommand("admin list-players");
+                AdminUIHelper.ExecuteQuickAction("list-all");
+                AddToConsole("[ADMIN] Player list requested");
             }
             GUILayout.EndHorizontal();
 
-            // Self Admin Section
+            // Teleport Coordinates Section - ENHANCED using AdminUIHelper
+            GUILayout.Space(10);
+            GUILayout.Label("=== Teleport to Coordinates ===");
+            
+            GUILayout.BeginHorizontal();
+            GUILayout.Label("X:", GUILayout.Width(20));
+            if (float.TryParse(GUILayout.TextField(_teleportX.ToString("F1"), GUILayout.Width(80)), out float newX))
+                _teleportX = newX;
+            GUILayout.Label("Y:", GUILayout.Width(20));
+            if (float.TryParse(GUILayout.TextField(_teleportY.ToString("F1"), GUILayout.Width(80)), out float newY))
+                _teleportY = newY;
+            GUILayout.Label("Z:", GUILayout.Width(20));
+            if (float.TryParse(GUILayout.TextField(_teleportZ.ToString("F1"), GUILayout.Width(80)), out float newZ))
+                _teleportZ = newZ;
+            GUILayout.EndHorizontal();
+            
+            GUILayout.BeginHorizontal();
+            if (GUILayout.Button("Teleport to Coords", GUILayout.Width(150)))
+            {
+                AdminUIHelper.TeleportToCoordinates(_teleportX, _teleportY, _teleportZ);
+                AddToConsole($"[ADMIN] Teleported to coordinates: {_teleportX:F1}, {_teleportY:F1}, {_teleportZ:F1}");
+            }
+            if (GUILayout.Button("Get Current Position", GUILayout.Width(150)))
+            {
+                var pos = localCharacter.Center;
+                _teleportX = pos.x;
+                _teleportY = pos.y;
+                _teleportZ = pos.z;
+                AddToConsole($"[ADMIN] Current position: {pos.x:F1}, {pos.y:F1}, {pos.z:F1}");
+            }
+            GUILayout.EndHorizontal();
+
+            // Self Admin Section - ENHANCED using AdminUIHelper
             GUILayout.Space(10);
             GUILayout.Label("=== Self Administration ===");
             
@@ -316,13 +449,12 @@ namespace PEAK_Menu.Menu
             
             if (GUILayout.Button(godModeButtonText, GUILayout.Width(130)))
             {
-                Character.LockStatuses();
-                AddToConsole($"[ADMIN] God mode {(localCharacter.statusesLocked ? "enabled" : "disabled")}");
+                AdminUIHelper.ExecuteQuickAction("god-mode", localCharacter.characterName);
+                AddToConsole($"[ADMIN] God mode {(!isGodModeEnabled ? "enabled" : "disabled")}");
             }
             
             GUI.backgroundColor = originalColor;
             
-            // God Mode Status
             var godModeStatus = isGodModeEnabled ? "ENABLED" : "Disabled";
             GUILayout.Label($"God Mode: {godModeStatus}", GUILayout.Width(120));
             
@@ -338,19 +470,43 @@ namespace PEAK_Menu.Menu
             
             if (GUILayout.Button(infiniteStamButtonText, GUILayout.Width(160)))
             {
-                Character.InfiniteStamina();
-                AddToConsole($"[ADMIN] Infinite stamina {(localCharacter.infiniteStam ? "enabled" : "disabled")}");
+                AdminUIHelper.ExecuteQuickAction("infinite-stamina", localCharacter.characterName);
+                AddToConsole($"[ADMIN] Infinite stamina {(!isInfiniteStamEnabled ? "enabled" : "disabled")}");
             }
             
             GUI.backgroundColor = originalColor;
             
-            // Infinite Stamina Status
             var infiniteStamStatus = isInfiniteStamEnabled ? "ENABLED" : "Disabled";
             GUILayout.Label($"Infinite Stamina: {infiniteStamStatus}", GUILayout.Width(120));
             
             GUILayout.EndHorizontal();
 
-            // NoClip controls - UPDATED SECTION
+            // NoClip controls - existing implementation stays the same
+            DrawNoClipControls();
+
+            if (GUILayout.Button("Full Self Heal"))
+            {
+                AdminUIHelper.ExecuteQuickAction("heal", localCharacter.characterName);
+                AddToConsole("[ADMIN] Self heal executed");
+            }
+
+            // Player Management Section - ENHANCED using AdminUIHelper
+            DrawPlayerManagementSection(localCharacter);
+
+            // Advanced Player Management Section - ENHANCED using AdminUIHelper
+            DrawAdvancedPlayerManagement();
+
+            // Status Display and Footer - existing implementation
+            DrawAdminStatusDisplay(localCharacter);
+
+            // Add extra space at the bottom for better scrolling
+            GUILayout.Space(20);
+            
+            GUILayout.EndScrollView();
+        }
+
+        private void DrawNoClipControls()
+        {
             GUILayout.Space(10);
             GUILayout.Label("=== Movement Controls ===");
 
@@ -364,6 +520,7 @@ namespace PEAK_Menu.Menu
                 var noClipButtonText = isNoClipEnabled ? "NoClip OFF" : "NoClip ON";
                 var noClipButtonColor = isNoClipEnabled ? Color.red : Color.green;
                 
+                var originalColor = GUI.backgroundColor;
                 GUI.backgroundColor = noClipButtonColor;
                 
                 if (GUILayout.Button(noClipButtonText, GUILayout.Width(100)))
@@ -463,13 +620,10 @@ namespace PEAK_Menu.Menu
             {
                 GUILayout.Label("NoClip manager not available");
             }
+        }
 
-            if (GUILayout.Button("Full Self Heal"))
-            {
-                ExecuteAdminCommand($"admin heal {localCharacter.characterName}");
-            }
-
-            // Player Management Section
+        private void DrawPlayerManagementSection(Character localCharacter)
+        {
             GUILayout.Space(10);
             GUILayout.Label("=== Player Management ===");
             
@@ -482,49 +636,145 @@ namespace PEAK_Menu.Menu
                     
                     GUILayout.BeginHorizontal();
                     
-                    // Player name and status
+                    // Player name and status with color coding
                     var status = character.data.dead ? "[DEAD]" : 
                                 character.data.passedOut ? "[OUT]" : "[OK]";
-                    GUILayout.Label($"{character.characterName} {status}", GUILayout.Width(150));
+            
+                    var statusColor = character.data.dead ? Color.red :
+                                     character.data.passedOut ? Color.yellow : Color.green;
+            
+                    var textColor = GUI.color;
+                    GUI.color = statusColor;
+                    GUILayout.Label($"{character.characterName} {status}", GUILayout.Width(120));
+                    GUI.color = textColor;
                     
-                    // Quick action buttons
-                    if (GUILayout.Button("Heal", GUILayout.Width(50)))
+                    // Quick action buttons - Row 1 using AdminUIHelper
+                    if (GUILayout.Button("Heal", GUILayout.Width(40)))
                     {
-                        ExecuteAdminCommand($"admin heal \"{character.characterName}\"");
+                        AdminUIHelper.ExecuteQuickAction("heal", character.characterName);
+                        AddToConsole($"[ADMIN] Healed {character.characterName}");
                     }
-                    if (GUILayout.Button("Goto", GUILayout.Width(50)))
+                    if (GUILayout.Button("Goto", GUILayout.Width(40)))
                     {
-                        ExecuteAdminCommand($"admin goto \"{character.characterName}\"");
+                        AdminUIHelper.ExecuteQuickAction("goto", character.characterName);
+                        AddToConsole($"[ADMIN] Teleported to {character.characterName}");
                     }
-                    if (GUILayout.Button("Rescue", GUILayout.Width(60)))
+                    if (GUILayout.Button("Bring", GUILayout.Width(40)))
                     {
-                        ExecuteAdminCommand($"admin rescue \"{character.characterName}\"");
+                        AdminUIHelper.ExecuteQuickAction("bring", character.characterName);
+                        AddToConsole($"[ADMIN] Brought {character.characterName} to you");
                     }
                     
-                    // Add Revive button - only show if player is dead or passed out
+                    // Conditional buttons using AdminUIHelper
                     if (character.data.dead || character.data.fullyPassedOut)
                     {
-                        if (GUILayout.Button("Revive", GUILayout.Width(60)))
+                        if (GUILayout.Button("Revive", GUILayout.Width(50)))
                         {
-                            ExecuteAdminCommand($"admin revive \"{character.characterName}\"");
+                            AdminUIHelper.ExecuteQuickAction("revive", character.characterName);
+                            AddToConsole($"[ADMIN] Revived {character.characterName}");
                         }
                     }
                     else
                     {
-                        // Add some spacing to keep layout consistent
-                        GUILayout.Space(64); // 60 width + 4 padding
+                        if (GUILayout.Button("Kill", GUILayout.Width(50)))
+                        {
+                            AdminUIHelper.ExecuteQuickAction("kill", character.characterName);
+                            AddToConsole($"[ADMIN] Killed {character.characterName}");
+                        }
                     }
                     
                     GUILayout.EndHorizontal();
+                    
+                    // Player actions row 2 (status management) using AdminUIHelper
+                    if (character != localCharacter) // Don't show for self
+                    {
+                        GUILayout.BeginHorizontal();
+                        GUILayout.Space(120); // Align with name column
+                        
+                        if (GUILayout.Button("God Mode", GUILayout.Width(70)))
+                        {
+                            AdminUIHelper.ExecuteQuickAction("god-mode", character.characterName);
+                            AddToConsole($"[ADMIN] Toggled god mode for {character.characterName}");
+                        }
+                        if (GUILayout.Button("∞ Stamina", GUILayout.Width(70)))
+                        {
+                            AdminUIHelper.ExecuteQuickAction("infinite-stamina", character.characterName);
+                            AddToConsole($"[ADMIN] Toggled infinite stamina for {character.characterName}");
+                        }
+                        if (GUILayout.Button("Clear Status", GUILayout.Width(80)))
+                        {
+                            AdminUIHelper.ExecuteQuickAction("clear-status", character.characterName);
+                            AddToConsole($"[ADMIN] Cleared status for {character.characterName}");
+                        }
+                        
+                        GUILayout.EndHorizontal();
+                    }
+                    
+                    GUILayout.Space(5); // Spacing between players
                 }
             }
+        }
 
+        private void DrawAdvancedPlayerManagement()
+        {
+            GUILayout.Space(10);
+            GUILayout.Label("=== Advanced Player Management ===");
+            
+            GUILayout.BeginHorizontal();
+            GUILayout.Label("Player:", GUILayout.Width(50));
+            _targetPlayerName = GUILayout.TextField(_targetPlayerName, GUILayout.Width(120));
+            GUILayout.Label("Value:", GUILayout.Width(45));
+            _statusValue = GUILayout.HorizontalSlider(_statusValue, 0f, 1f, GUILayout.Width(80));
+            GUILayout.Label($"{_statusValue:F2}", GUILayout.Width(40));
+            GUILayout.EndHorizontal();
+            
+            GUILayout.BeginHorizontal();
+            if (GUILayout.Button("Set Health", GUILayout.Width(80)))
+            {
+                if (!string.IsNullOrEmpty(_targetPlayerName))
+                {
+                    AdminUIHelper.SetPlayerStatus(_targetPlayerName, "health", _statusValue);
+                    AddToConsole($"[ADMIN] Set {_targetPlayerName}'s health to {_statusValue * 100:F0}%");
+                }
+            }
+            if (GUILayout.Button("Set Stamina", GUILayout.Width(80)))
+            {
+                if (!string.IsNullOrEmpty(_targetPlayerName))
+                {
+                    AdminUIHelper.SetPlayerStatus(_targetPlayerName, "stamina", _statusValue);
+                    AddToConsole($"[ADMIN] Set {_targetPlayerName}'s stamina to {_statusValue * 100:F0}%");
+                }
+            }
+            if (GUILayout.Button("Set Hunger", GUILayout.Width(80)))
+            {
+                if (!string.IsNullOrEmpty(_targetPlayerName))
+                {
+                    AdminUIHelper.SetPlayerStatus(_targetPlayerName, "hunger", _statusValue);
+                    AddToConsole($"[ADMIN] Set {_targetPlayerName}'s hunger to {_statusValue * 100:F0}%");
+                }
+            }
+            GUILayout.EndHorizontal();
+        }
+
+        private void DrawAdminStatusDisplay(Character localCharacter)
+        {
             // Status Display
             GUILayout.Space(10);
             GUILayout.Label("=== Your Admin Status ===");
+            
+            var playerManager = _menuManager.GetPlayerManager();
+            var noClipManager = _menuManager.GetNoClipManager();
+            
             GUILayout.Label($"God Mode: {(localCharacter.statusesLocked ? "ON" : "OFF")}");
             GUILayout.Label($"Infinite Stamina: {(localCharacter.infiniteStam ? "ON" : "OFF")}");
             GUILayout.Label($"NoClip: {(noClipManager?.IsNoClipEnabled == true ? "ON" : "OFF")}");
+            
+            if (playerManager != null)
+            {
+                GUILayout.Label($"No Fall Damage: {(playerManager.NoFallDamageEnabled ? "ON" : "OFF")}");
+                GUILayout.Label($"No Weight: {(playerManager.NoWeightEnabled ? "ON" : "OFF")}");
+                GUILayout.Label($"Affliction Immunity: {(playerManager.AfflictionImmunityEnabled ? "ON" : "OFF")}");
+            }
             
             GUILayout.Space(10);
             GUILayout.Label("=== Hotkeys ===");
@@ -534,11 +784,6 @@ namespace PEAK_Menu.Menu
             GUILayout.Space(10);
             GUILayout.Label("Use console for advanced admin commands");
             GUILayout.Label("Type 'help admin' for full command list");
-
-            // Add extra space at the bottom for better scrolling
-            GUILayout.Space(20);
-            
-            GUILayout.EndScrollView();
         }
 
         private void ExecuteCommand()
@@ -552,12 +797,6 @@ namespace PEAK_Menu.Menu
             
             // Keep focus on console input after command execution
             //GUI.FocusControl("ConsoleInput");
-        }
-
-        private void ExecuteAdminCommand(string command)
-        {
-            AddToConsole($"> {command}");
-            _menuManager.ExecuteCommand(command);
         }
 
         public void AddToConsole(string message)

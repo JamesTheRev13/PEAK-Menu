@@ -1,6 +1,7 @@
-using System.Linq;
-using UnityEngine;
 using PEAK_Menu.Utils;
+using System.Linq;
+using System.Reflection;
+using UnityEngine;
 
 namespace PEAK_Menu.Commands
 {
@@ -20,6 +21,8 @@ Player Management:
   revive <player>       - Revive a dead player at safe location
   rescue <player>       - Teleport player to you for rescue
   goto <player>         - Teleport to a player's location
+  bring <player>        - Teleport player to your location  
+  kill <player>         - Kill a player instantly
 
 Status Management:
   hunger <player> <0-1>     - Set hunger level (0=none, 1=max)
@@ -29,8 +32,9 @@ Status Management:
 
 Movement Tools:
   noclip [on/off]           - Toggle noclip mode (fly through walls)
-  noclip speed <value>      - Set noclip speed (1-100)
-  noclip fast <value>       - Set noclip fast speed (5-200)
+  noclip speed <value>      - Set noclip speed (100-2000)
+  noclip fast <value>       - Set noclip fast speed (1-10)
+  teleport-coords <x> <y> <z> - Teleport to coordinates
 
 Moderation Tools:
   infinite-stamina <player> [on/off] - Toggle infinite stamina
@@ -45,9 +49,11 @@ Utility:
 
 Examples:
   admin heal player1
-  admin revive ""John Doe""
+  admin kill ""John Doe""
+  admin bring player1
   admin noclip on
-  admin noclip speed 15
+  admin noclip speed 1500
+  admin teleport-coords 100 50 200
   admin infinite-stamina player1 on
   admin clear-status all
   admin list-players
@@ -114,6 +120,15 @@ Note: Use 'all' as player name to affect all players";
                     break;
                 case "noclip":
                     HandleNoClipCommand(parsed);
+                    break;
+                case "kill":
+                    HandleKillCommand(parsed);
+                    break;
+                case "bring":
+                    HandleBringCommand(parsed);
+                    break;
+                case "teleport-coords":
+                    HandleTeleportCoordsCommand(parsed);
                     break;
                 default:
                     LogError($"Unknown admin command: {parsed.Action}");
@@ -609,8 +624,8 @@ Note: Use 'all' as player name to affect all players";
 
         private void HandleResetWorldCommand()
         {
+            // TODO
             LogWarning("Reset-world command is not implemented yet");
-            LogInfo("This feature would require extensive world state modifications");
         }
 
         private void HandleNoClipCommand(ParameterParser.ParsedParameters parsed)
@@ -717,7 +732,125 @@ Note: Use 'all' as player name to affect all players";
                     break;
             }
         }
-        
+
+        private void HandleKillCommand(ParameterParser.ParsedParameters parsed)
+        {
+            if (string.IsNullOrEmpty(parsed.PlayerName))
+            {
+                LogError("Usage: admin kill <player>");
+                return;
+            }
+
+            var targets = ParameterParser.GetTargetPlayers(parsed.PlayerName, out string error);
+            if (!string.IsNullOrEmpty(error))
+            {
+                LogError(error);
+                return;
+            }
+
+            var playerManager = Plugin.Instance?._menuManager?.GetPlayerManager();
+            if (playerManager == null)
+            {
+                LogError("Player manager not available");
+                return;
+            }
+
+            foreach (var character in targets)
+            {
+                playerManager.KillPlayer(character);
+                LogInfo($"Killed player: {character.characterName}");
+            }
+        }
+
+        private void HandleBringCommand(ParameterParser.ParsedParameters parsed)
+        {
+            if (string.IsNullOrEmpty(parsed.PlayerName))
+            {
+                LogError("Usage: admin bring <player>");
+                return;
+            }
+
+            var targets = ParameterParser.GetTargetPlayers(parsed.PlayerName, out string error);
+            if (!string.IsNullOrEmpty(error))
+            {
+                LogError(error);
+                return;
+            }
+
+            var localPlayer = Character.localCharacter;
+            if (localPlayer == null)
+            {
+                LogError("Cannot bring player: Local player not found");
+                return;
+            }
+
+            var playerManager = Plugin.Instance?._menuManager?.GetPlayerManager();
+            if (playerManager == null)
+            {
+                LogError("Player manager not available");
+                return;
+            }
+
+            Vector3 bringPosition = localPlayer.Center + localPlayer.data.lookDirection * 2f;
+
+            foreach (var character in targets)
+            {
+                if (character == localPlayer)
+                {
+                    LogWarning("Cannot bring yourself");
+                    continue;
+                }
+
+                playerManager.BringPlayer(character, bringPosition);
+                LogInfo($"Brought player {character.characterName} to your location");
+            }
+        }
+
+        private void HandleTeleportCoordsCommand(ParameterParser.ParsedParameters parsed)
+        {
+            if (parsed.RemainingParameters.Length < 3)
+            {
+                LogError("Usage: admin teleport-coords <x> <y> <z>");
+                return;
+            }
+
+            if (!float.TryParse(parsed.RemainingParameters[0], out float x) ||
+                !float.TryParse(parsed.RemainingParameters[1], out float y) ||
+                !float.TryParse(parsed.RemainingParameters[2], out float z))
+            {
+                LogError("Invalid coordinates. Please provide numeric values.");
+                return;
+            }
+
+            var localPlayer = Character.localCharacter;
+            if (localPlayer == null)
+            {
+                LogError("Cannot teleport: Local player not found");
+                return;
+            }
+
+            try
+            {
+                Vector3 targetPosition = new Vector3(x, y, z);
+                var warpMethod = typeof(Character).GetMethod("WarpPlayerRPC",
+                    BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+
+                if (warpMethod != null)
+                {
+                    warpMethod.Invoke(localPlayer, new object[] { targetPosition, true });
+                    LogInfo($"Teleported to coordinates: {targetPosition}");
+                }
+                else
+                {
+                    LogError("Could not teleport: Teleport method not found");
+                }
+            }
+            catch (System.Exception ex)
+            {
+                LogError($"Failed to teleport to coordinates: {ex.Message}");
+            }
+        }
+
         public override bool CanExecute()
         {
             return Character.localCharacter != null;

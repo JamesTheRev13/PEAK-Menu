@@ -11,6 +11,7 @@ namespace PEAK_Menu.Menu
         private MenuUI _menuUI;
         private RainbowManager _rainbowManager;
         private NoClipManager _noClipManager;
+        private PlayerManager _playerManager;
 
         public bool IsMenuOpen => _isMenuOpen;
 
@@ -22,6 +23,7 @@ namespace PEAK_Menu.Menu
                 _menuUI = new MenuUI(this);
                 _rainbowManager = new RainbowManager();
                 _noClipManager = new NoClipManager();
+                _playerManager = new PlayerManager();
                 Plugin.Log.LogInfo("Menu system initialized");
             }
             catch (System.Exception ex)
@@ -119,6 +121,11 @@ namespace PEAK_Menu.Menu
         public NoClipManager GetNoClipManager()
         {
             return _noClipManager;
+        }
+
+        public PlayerManager GetPlayerManager()
+        {
+            return _playerManager;
         }
 
         public void Cleanup()
