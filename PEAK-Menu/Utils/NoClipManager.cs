@@ -17,6 +17,10 @@ namespace PEAK_Menu.Utils
         // Track relative positions to maintain character shape
         private System.Collections.Generic.Dictionary<Rigidbody, Vector3> _relativePositions;
         private Vector3 _lastCenterPosition;
+        
+        // Smooth movement variables
+        private Vector3 _accumulatedMovement = Vector3.zero;
+        private float _fixedUpdateTimer = 0f;
 
         public bool IsNoClipEnabled => _noClipEnabled;
         public float NoClipSpeed => _noClipSpeed;
@@ -66,6 +70,10 @@ namespace PEAK_Menu.Utils
             StoreOriginalPhysicsStates(character);
             StoreRelativePositions(character);
             
+            // Reset movement accumulation
+            _accumulatedMovement = Vector3.zero;
+            _fixedUpdateTimer = 0f;
+            
             // Disable collision for all body parts
             SetCollisionEnabled(character, false);
             
@@ -97,6 +105,7 @@ namespace PEAK_Menu.Utils
             // Clear stored states
             _originalStates.Clear();
             _relativePositions.Clear();
+            _accumulatedMovement = Vector3.zero;
             
             Plugin.Log.LogInfo("NoClip disabled");
         }
@@ -126,8 +135,20 @@ namespace PEAK_Menu.Utils
             var character = Character.localCharacter;
             if (character == null) return;
 
-            // Handle NoClip movement
-            HandleNoClipMovement(character);
+            // Handle input gathering more frequently
+            HandleNoClipInput(character);
+            
+            // Apply movement more frequently for smoother movement
+            _fixedUpdateTimer += Time.deltaTime;
+            if (_fixedUpdateTimer >= Time.fixedDeltaTime || _accumulatedMovement.magnitude > 0.001f)
+            {
+                if (_accumulatedMovement != Vector3.zero)
+                {
+                    MoveCharacterMaintainShape(character, _accumulatedMovement);
+                    _accumulatedMovement = Vector3.zero;
+                }
+                _fixedUpdateTimer = 0f;
+            }
         }
 
         private void StoreOriginalPhysicsStates(Character character)
@@ -195,7 +216,7 @@ namespace PEAK_Menu.Utils
             }
         }
 
-        private void HandleNoClipMovement(Character character)
+        private void HandleNoClipInput(Character character)
         {
             if (!CanProcessInput(character)) return;
 
@@ -244,21 +265,18 @@ namespace PEAK_Menu.Utils
                 currentSpeed = _noClipFastSpeed;
             }
 
-            // Apply movement with delta time
-            var movement = moveVector * currentSpeed * Time.deltaTime;
+            // Use unscaled delta time for consistent movement regardless of framerate
+            var movement = moveVector * currentSpeed * Time.unscaledDeltaTime;
             
             if (movement != Vector3.zero)
             {
-                // Move the entire character using improved method
-                MoveCharacterMaintainShape(character, movement);
+                // Accumulate movement for smoother application
+                _accumulatedMovement += movement;
             }
         }
 
         private void MoveCharacterMaintainShape(Character character, Vector3 movement)
         {
-            // Get the hip (center) rigidbody
-            var hipRig = character.refs.ragdoll.partDict[BodypartType.Hip].Rig;
-            
             // Calculate the new center position
             var newCenterPosition = _lastCenterPosition + movement;
             
@@ -273,8 +291,8 @@ namespace PEAK_Menu.Utils
                     // Set absolute position based on new center + relative offset
                     bodypart.Rig.position = newCenterPosition + relativePos;
                     
-                    // Only clear velocities if not kinematic (to avoid warnings)
-                    if (!bodypart.Rig.isKinematic)
+                    // Clear velocities less frequently to reduce overhead
+                    if (Time.fixedTime % 0.1f < Time.fixedDeltaTime && !bodypart.Rig.isKinematic)
                     {
                         bodypart.Rig.linearVelocity = Vector3.zero;
                         bodypart.Rig.angularVelocity = Vector3.zero;
@@ -282,8 +300,11 @@ namespace PEAK_Menu.Utils
                 }
             }
             
-            // Update animation helper transforms to match
-            UpdateAnimationTransforms(character, newCenterPosition);
+            // Update animation helper transforms less frequently
+            if (Time.fixedTime % 0.05f < Time.fixedDeltaTime)
+            {
+                UpdateAnimationTransforms(character, newCenterPosition);
+            }
             
             // Update our center position tracking
             _lastCenterPosition = newCenterPosition;
