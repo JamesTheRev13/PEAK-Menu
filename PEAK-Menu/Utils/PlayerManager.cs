@@ -1,5 +1,5 @@
-using UnityEngine;
 using System.Reflection;
+using UnityEngine;
 
 namespace PEAK_Menu.Utils
 {
@@ -106,18 +106,16 @@ namespace PEAK_Menu.Utils
 
             try
             {
-                // Use the same method as admin revive but for killing
-                var dieMethod = typeof(Character).GetMethod("DieInstantly", 
-                    BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
-                
-                if (dieMethod != null)
+                if (target.photonView != null)
                 {
-                    dieMethod.Invoke(target, null);
+                    // Use the character's center position for item spawn
+                    Vector3 itemSpawnPoint = target.Center + Vector3.up * 0.2f + Vector3.forward * 0.1f;
+                    target.photonView.RPC("RPCA_Die", Photon.Pun.RpcTarget.All, itemSpawnPoint);
                     Plugin.Log?.LogInfo($"Killed player: {target.characterName}");
                 }
                 else
                 {
-                    // Fallback - set health to 0
+                    // Fallback - set health to 0 if PhotonView not available
                     target.refs.afflictions.SetStatus(CharacterAfflictions.STATUSTYPE.Injury, 1.0f);
                     Plugin.Log?.LogInfo($"Killed player (fallback): {target.characterName}");
                 }
@@ -134,13 +132,9 @@ namespace PEAK_Menu.Utils
 
             try
             {
-                var warpMethod = typeof(Character).GetMethod("WarpPlayerRPC", 
-                    BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
-                
-                if (warpMethod != null)
+                if (target.photonView != null)
                 {
-                    warpMethod.Invoke(target, new object[] { position, true });
-                    Plugin.Log?.LogInfo($"Brought player {target.characterName} to position {position}");
+                    target.photonView.RPC("WarpPlayerRPC", Photon.Pun.RpcTarget.All, position, true);
                 }
             }
             catch (System.Exception ex)

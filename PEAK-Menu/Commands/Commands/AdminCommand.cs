@@ -1,7 +1,7 @@
 using PEAK_Menu.Utils;
 using System.Linq;
-using System.Reflection;
 using UnityEngine;
+using UnityEngine.UIElements;
 
 namespace PEAK_Menu.Commands
 {
@@ -382,24 +382,18 @@ Note: Use 'all' as player name to affect all players";
                 {
                     try
                     {
-                        // Get safe revive position near local player
-                        var localPlayer = Character.localCharacter;
-                        Vector3 revivePos = localPlayer != null ? localPlayer.Center + Vector3.forward * 2f : character.Center;
-                        
-                        // Use reflection to call RPCA_ReviveAtPosition if available
-                        var reviveMethod = typeof(Character).GetMethod("RPCA_ReviveAtPosition", 
-                            System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic);
-                        
-                        if (reviveMethod != null)
+                        Vector3 revivePos = character.Ghost != null ? character.Ghost.transform.position : character.Head;
+
+                        if (character.photonView != null)
                         {
-                            reviveMethod.Invoke(character, new object[] { revivePos, true });
+                            character.photonView.RPC("RPCA_ReviveAtPosition", Photon.Pun.RpcTarget.All, revivePos, true);
                         }
                         else
                         {
                             // Fallback to basic revive
                             var basicReviveMethod = typeof(Character).GetMethod("RPCA_Revive", 
                                 System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic);
-                            
+
                             if (basicReviveMethod != null)
                             {
                                 basicReviveMethod.Invoke(character, new object[] { true });
@@ -457,15 +451,15 @@ Note: Use 'all' as player name to affect all players";
                     // Teleport player to rescue position
                     var warpMethod = typeof(Character).GetMethod("WarpPlayerRPC", 
                         System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic);
-                    
-                    if (warpMethod != null)
+
+                    if (character.photonView != null)
                     {
-                        warpMethod.Invoke(character, new object[] { rescuePosition, true });
+                        character.photonView.RPC("WarpPlayerRPC", Photon.Pun.RpcTarget.All, rescuePosition, true);
                         LogInfo($"Rescued player {character.characterName} to your location");
                     }
                     else
                     {
-                        LogError($"Could not rescue {character.characterName}: Teleport method not found");
+                        LogError($"Could not rescue {character.characterName}: PhotonView not found");
                     }
                 }
                 catch (System.Exception ex)
@@ -513,19 +507,9 @@ Note: Use 'all' as player name to affect all players";
             try
             {
                 Vector3 targetPosition = target.Center + Vector3.back * 2f; // Position slightly behind target
-                
-                var warpMethod = typeof(Character).GetMethod("WarpPlayerRPC", 
-                    System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic);
-                
-                if (warpMethod != null)
-                {
-                    warpMethod.Invoke(localPlayer, new object[] { targetPosition, true });
-                    LogInfo($"Teleported to {target.characterName}");
-                }
-                else
-                {
-                    LogError("Could not teleport: Teleport method not found");
-                }
+
+                localPlayer.photonView.RPC("WarpPlayerRPC", Photon.Pun.RpcTarget.All, targetPosition, true);
+                LogInfo($"Teleported to {target.characterName}");
             }
             catch (System.Exception ex)
             {
@@ -629,12 +613,10 @@ Note: Use 'all' as player name to affect all players";
                     // Revive if dead
                     if (character.data.dead || character.data.fullyPassedOut)
                     {
-                        var reviveMethod = typeof(Character).GetMethod("RPCA_Revive", 
-                            System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic);
-                        
-                        if (reviveMethod != null)
+                        if (character.photonView != null)
                         {
-                            reviveMethod.Invoke(character, new object[] { true });
+                            Vector3 revivePos = character.Ghost != null ? character.Ghost.transform.position : character.Head;
+                            character.photonView.RPC("RPCA_ReviveAtPosition", Photon.Pun.RpcTarget.All, revivePos, true);
                         }
                     }
                     
@@ -859,17 +841,14 @@ Note: Use 'all' as player name to affect all players";
             try
             {
                 Vector3 targetPosition = new Vector3(x, y, z);
-                var warpMethod = typeof(Character).GetMethod("WarpPlayerRPC",
-                    BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
-
-                if (warpMethod != null)
+                if (localPlayer.photonView != null)
                 {
-                    warpMethod.Invoke(localPlayer, new object[] { targetPosition, true });
+                    localPlayer.photonView.RPC("WarpPlayerRPC", Photon.Pun.RpcTarget.All, targetPosition, true);
                     LogInfo($"Teleported to coordinates: {targetPosition}");
                 }
                 else
                 {
-                    LogError("Could not teleport: Teleport method not found");
+                    LogError("Could not teleport: PhotonView not found");
                 }
             }
             catch (System.Exception ex)
