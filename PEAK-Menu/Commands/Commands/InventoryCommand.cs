@@ -165,7 +165,31 @@ and whether you have a backpack equipped.";
                     // Try to drop/clear current item
                     LogInfo($"Attempting to clear current item: {character.data.currentItem.name}");
                     
-                    // TODO
+                    // Use reflection to access EquipSlot method if needed
+                    var equipSlotMethod = typeof(CharacterItems).GetMethod("EquipSlot", 
+                        System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public);
+                    
+                    if (equipSlotMethod != null && character.refs?.items != null)
+                    {
+                        // Create an "None" optionable byte to clear the slot
+                        var optionableType = typeof(Zorro.Core.Optionable<byte>);
+                        var noneProperty = optionableType.GetProperty("None", System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.Public);
+                        
+                        if (noneProperty != null)
+                        {
+                            var noneValue = noneProperty.GetValue(null);
+                            equipSlotMethod.Invoke(character.refs.items, new object[] { noneValue });
+                            LogInfo("Successfully cleared current item");
+                        }
+                        else
+                        {
+                            LogError("Could not access Optionable.None property");
+                        }
+                    }
+                    else
+                    {
+                        LogError("Could not access EquipSlot method or CharacterItems reference");
+                    }
                 }
                 catch (System.Exception ex)
                 {

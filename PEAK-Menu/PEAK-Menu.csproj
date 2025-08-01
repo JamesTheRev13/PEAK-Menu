@@ -43,5 +43,8 @@
     <Reference Include="Photon3Unity3D">
       <HintPath>C:\Program Files (x86)\Steam\steamapps\common\PEAK\PEAK_Data\Managed\Photon3Unity3D.dll</HintPath>
     </Reference>
+    <Reference Include="Zorro.Core.Runtime">
+      <HintPath>C:\Program Files (x86)\Steam\steamapps\common\PEAK\PEAK_Data\Managed\Zorro.Core.Runtime.dll</HintPath>
+    </Reference>
   </ItemGroup>
 </Project>

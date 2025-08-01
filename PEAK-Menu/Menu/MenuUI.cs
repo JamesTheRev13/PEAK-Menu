@@ -1,6 +1,7 @@
 ﻿using System.Linq;
 using UnityEngine;
 using PEAK_Menu.Utils;
+using Zorro.Core.Serizalization;
 
 namespace PEAK_Menu.Menu
 {
@@ -44,39 +45,8 @@ namespace PEAK_Menu.Menu
         private string _selectedItemName = "Select Item...";
         
         // Predefined item list - this is temporary, will be dynamic
-        private readonly string[] _availableItems = {
-            "Select Item...",
-            "rope",
-            "pickaxe",
-            "hammer",
-            "sleeping_bag",
-            "flashlight",
-            "compass",
-            "energy_bar",
-            "water_bottle",
-            "medkit",
-            "bandage",
-            "painkiller",
-            "climbing_spike",
-            "harness",
-            "helmet",
-            "gloves",
-            "boots",
-            "jacket",
-            "pants",
-            "backpack",
-            "carabiner",
-            "ice_axe",
-            "crampons",
-            "tent",
-            "stove",
-            "fuel_canister",
-            "walkie_talkie",
-            "flare",
-            "emergency_beacon",
-            "protein_bar",
-            "electrolyte_drink"
-        };
+        private string[] _availableItems = { "Select Item..." };
+        private bool _itemsInitialized = false;
 
         public MenuUI(MenuManager menuManager)
         {
@@ -85,7 +55,6 @@ namespace PEAK_Menu.Menu
             _consoleOutput = new System.Collections.Generic.List<string>();
         }
 
-        // NEW: Custom dropdown method for player selection
         private void DrawPlayerDropdown()
         {
             var allCharacters = Character.AllCharacters?.ToList();
@@ -228,57 +197,111 @@ namespace PEAK_Menu.Menu
             return clicked;
         }
 
+        private void InitializeItemsList()
+        {
+            try
+            {
+                // Delay initialization to ensure game is loaded
+                var itemHelper = ItemDiscoveryHelper.Instance;
+                _availableItems = itemHelper.GetItemNamesArray();
+                _itemsInitialized = true;
+                AddToConsole($"[INIT] Discovered {_availableItems.Length - 1} items for admin panel");
+            }
+            catch (System.Exception ex)
+            {
+                AddToConsole($"[ERROR] Failed to initialize items list: {ex.Message}");
+                // Keep the default array as fallback
+            }
+        }
+
         // NEW: Custom dropdown method for item selection
         private void DrawItemDropdown()
         {
             GUILayout.BeginHorizontal();
             GUILayout.Label("Item:", GUILayout.Width(40));
-            
+
             // Dropdown button
             if (GUILayout.Button(_selectedItemName, GUILayout.Width(150)))
             {
                 _showItemDropdown = !_showItemDropdown;
             }
-            
+
+            // Refresh button
+            if (GUILayout.Button("Load Items", GUILayout.Width(75)))
+            {
+                RefreshItemsList();
+            }
+
             GUILayout.EndHorizontal();
-            
-            // Dropdown menu
+
+            // Dropdown menu - WIDENED for better comfort
             if (_showItemDropdown)
             {
-                GUILayout.BeginVertical(GUI.skin.box, GUILayout.Width(190), GUILayout.MaxHeight(150));
-                
+                GUILayout.BeginVertical(GUI.skin.box, GUILayout.Width(250), GUILayout.MaxHeight(150));
+
                 _itemDropdownScrollPosition = GUILayout.BeginScrollView(_itemDropdownScrollPosition, GUILayout.Height(140));
-                
+
                 for (int i = 0; i < _availableItems.Length; i++)
                 {
                     var item = _availableItems[i];
                     var isSelected = _selectedItemIndex == i;
-                    
+
                     // Highlight selected item
                     var originalColor = GUI.backgroundColor;
                     if (isSelected)
                     {
                         GUI.backgroundColor = Color.cyan;
                     }
-                    
+
                     if (GUILayout.Button(item, GUILayout.Height(20)))
                     {
                         _selectedItemIndex = i;
                         _selectedItemName = item;
                         _showItemDropdown = false;
-                        
+
                         // Don't log for "Select Item..." option
                         if (i > 0)
                         {
                             AddToConsole($"[ADMIN] Selected item: {item}");
                         }
                     }
-                    
+
                     GUI.backgroundColor = originalColor;
                 }
-                
+
                 GUILayout.EndScrollView();
                 GUILayout.EndVertical();
+
+                // Show item count
+                if (_itemsInitialized)
+                {
+                    GUILayout.Label($"{_availableItems.Length - 1} items available", GUI.skin.box);
+                }
+                else
+                {
+                    GUILayout.Label("Items loading...", GUI.skin.box);
+                }
+            }
+        }
+
+        private void RefreshItemsList()
+        {
+            try
+            {
+                var itemHelper = ItemDiscoveryHelper.Instance;
+                itemHelper.RefreshItems();
+                _availableItems = itemHelper.GetItemNamesArray();
+                _itemsInitialized = true;
+
+                // Reset selection
+                _selectedItemIndex = 0;
+                _selectedItemName = "Select Item...";
+
+                AddToConsole($"[ADMIN] Refreshed items list - found {_availableItems.Length - 1} items");
+            }
+            catch (System.Exception ex)
+            {
+                AddToConsole($"[ERROR] Failed to refresh items: {ex.Message}");
             }
         }
 
@@ -1014,69 +1037,55 @@ namespace PEAK_Menu.Menu
                 DrawItemDropdown();
                 
                 GUILayout.Space(5);
-                
+
                 // Give item button
                 GUILayout.BeginHorizontal();
-                
+
                 // Button state logic
                 bool canGiveItem = _selectedItemIndex > 0; // Index 0 is "Select Item..."
                 var buttonColor = GUI.backgroundColor;
-                
+
                 if (!canGiveItem)
                 {
                     GUI.backgroundColor = Color.gray;
                 }
-                
+
                 if (GUILayout.Button("Give Item", GUILayout.Width(100)) && canGiveItem)
                 {
                     var itemName = _availableItems[_selectedItemIndex];
-                    // TODO: Implement actual item giving logic
-                    
-                    // For now, just log the action
-                    if (_selectedPlayer.IsLocal)
-                    {
-                        AddToConsole($"[ADMIN] Giving {itemName} to {_selectedPlayer.characterName} (local player)");
-                        AddToConsole($"[TODO] Implement direct inventory addition for local player");
-                    }
-                    else
-                    {
-                        AddToConsole($"[ADMIN] Spawning {itemName} near {_selectedPlayer.characterName} (remote player)");
-                        AddToConsole($"[TODO] Implement item spawning at player location");
-                    }
+                    GiveItemToPlayer(_selectedPlayer, itemName, 1);
                 }
-                
-                if (GUILayout.Button("Give Item x5", GUILayout.Width(100)) && canGiveItem)
+
+                if (GUILayout.Button("Drop Item", GUILayout.Width(100)) && canGiveItem)
                 {
                     var itemName = _availableItems[_selectedItemIndex];
-                    // TODO: Implement bulk item giving logic
-                    
-                    if (_selectedPlayer.IsLocal)
-                    {
-                        AddToConsole($"[ADMIN] Giving 5x {itemName} to {_selectedPlayer.characterName} (local player)");
-                        AddToConsole($"[TODO] Implement bulk inventory addition for local player");
-                    }
-                    else
-                    {
-                        AddToConsole($"[ADMIN] Spawning 5x {itemName} near {_selectedPlayer.characterName} (remote player)");
-                        AddToConsole($"[TODO] Implement bulk item spawning at player location");
-                    }
+                    DropItemNearPlayer(_selectedPlayer, itemName, 1);
                 }
-                
+
                 GUI.backgroundColor = buttonColor;
                 GUILayout.EndHorizontal();
-                
-                // Item management help text
+
+                // Item management help text - UPDATED
                 if (!canGiveItem)
                 {
-                    GUILayout.Label("Select an item from the dropdown to enable giving", GUI.skin.box);
+                    GUILayout.Label("Select an item from the dropdown to enable item actions", GUI.skin.box);
                 }
                 else
                 {
-                    var local = _selectedPlayer.IsLocal;
-                    var methodText = local ? "Direct inventory addition" : "Spawn at player location";
-                    GUILayout.Label($"Method: {methodText}", GUI.skin.box);
+                    var isLocalPlayer = _selectedPlayer.IsLocal;
+                    var giveMethodText = isLocalPlayer ? "Direct inventory addition" : "Spawn at player location";
+                    GUILayout.Label($"Give: {giveMethodText}", GUI.skin.box);
+                    GUILayout.Label("Drop: Always spawns at player's feet", GUI.skin.box);
+
+                    if (!isLocalPlayer && !Photon.Pun.PhotonNetwork.IsMasterClient)
+                    {
+                        var statusColor = GUI.color;
+                        GUI.color = Color.yellow;
+                        GUILayout.Label("Warning: Not Master Client - spawning may fail", GUI.skin.box);
+                        GUI.color = statusColor;
+                    }
                 }
-                
+
                 GUILayout.Space(5);
                 GUILayout.Label("Note: God Mode and Infinite Stamina are in Player tab");
                 GUILayout.Label("(These features only work for the local player)");
@@ -1111,6 +1120,211 @@ namespace PEAK_Menu.Menu
         public void ClearConsole()
         {
             _consoleOutput.Clear();
+        }
+
+        private void GiveItemToPlayer(Character targetPlayer, string itemName, int quantity)
+        {
+            if (targetPlayer == null || string.IsNullOrEmpty(itemName))
+            {
+                AddToConsole("[ERROR] Invalid player or item name");
+                return;
+            }
+
+            try
+            {
+                // Find the item prefab by name
+                var itemPrefab = FindItemPrefabByName(itemName);
+                if (itemPrefab == null)
+                {
+                    AddToConsole($"[ERROR] Item '{itemName}' not found in resources");
+                    return;
+                }
+
+                if (targetPlayer.IsLocal)
+                {
+                    // For local player, add directly to inventory
+                    GiveItemToLocalPlayer(itemPrefab, quantity);
+                }
+                else
+                {
+                    // For remote players, spawn items near them
+                    SpawnItemsNearPlayer(targetPlayer, itemPrefab, quantity);
+                }
+                
+                AddToConsole($"[ADMIN] Gave {quantity}x {itemName} to {targetPlayer.characterName}");
+            }
+            catch (System.Exception ex)
+            {
+                AddToConsole($"[ERROR] Failed to give item: {ex.Message}");
+            }
+        }
+
+        private void DropItemNearPlayer(Character targetPlayer, string itemName, int quantity)
+        {
+            if (targetPlayer == null || string.IsNullOrEmpty(itemName))
+            {
+                AddToConsole("[ERROR] Invalid player or item name");
+                return;
+            }
+
+            try
+            {
+                // Find the item prefab by name
+                var itemPrefab = FindItemPrefabByName(itemName);
+                if (itemPrefab == null)
+                {
+                    AddToConsole($"[ERROR] Item '{itemName}' not found in resources");
+                    return;
+                }
+
+                // Always spawn items at player's feet regardless of local/remote
+                SpawnItemsNearPlayer(targetPlayer, itemPrefab, quantity);
+
+                AddToConsole($"[ADMIN] Dropped {quantity}x {itemName} near {targetPlayer.characterName}");
+            }
+            catch (System.Exception ex)
+            {
+                AddToConsole($"[ERROR] Failed to drop item: {ex.Message}");
+            }
+        }
+
+        private Item FindItemPrefabByName(string itemName)
+        {
+            try
+            {
+                var itemHelper = ItemDiscoveryHelper.Instance;
+                return itemHelper.FindItemByName(itemName);
+            }
+            catch (System.Exception ex)
+            {
+                AddToConsole($"[ERROR] Exception while searching for item '{itemName}': {ex.Message}");
+                return null;
+            }
+        }
+
+        private void GiveItemToLocalPlayer(Item itemPrefab, int quantity)
+        {
+            var localPlayer = Player.localPlayer;
+            if (localPlayer == null)
+            {
+                AddToConsole("[ERROR] Local player not found");
+                return;
+            }
+
+            try
+            {
+                for (int i = 0; i < quantity; i++)
+                {
+                    // Find an empty slot
+                    for (byte slotIndex = 0; slotIndex < localPlayer.itemSlots.Length; slotIndex++)
+                    {
+                        var slot = localPlayer.itemSlots[slotIndex];
+                        if (slot.IsEmpty())
+                        {
+                            // Create new item instance data
+                            var itemData = new ItemInstanceData(System.Guid.NewGuid());
+                            ItemInstanceDataHandler.AddInstanceData(itemData);
+                            
+                            // Set the slot data
+                            slot.prefab = itemPrefab;
+                            slot.data = itemData;
+                            
+                            // Sync inventory with other players
+                            var syncData = IBinarySerializable.ToManagedArray<InventorySyncData>(
+                                new InventorySyncData(
+                                    localPlayer.itemSlots,
+                                    localPlayer.backpackSlot,
+                                    localPlayer.tempFullSlot
+                                )
+                            );
+                            
+                            localPlayer.photonView.RPC("SyncInventoryRPC", Photon.Pun.RpcTarget.Others, syncData, true);
+                            
+                            AddToConsole($"[ADMIN] Added {itemPrefab.UIData?.itemName ?? itemPrefab.gameObject.name} to inventory slot {slotIndex}");
+                            break;
+                        }
+                    }
+                }
+            }
+            catch (System.Exception ex)
+            {
+                AddToConsole($"[ERROR] Failed to add item to local inventory: {ex.Message}");
+            }
+        }
+
+        private void SpawnItemsNearPlayer(Character targetPlayer, Item itemPrefab, int quantity)
+        {
+            if (!Photon.Pun.PhotonNetwork.IsMasterClient)
+            {
+                AddToConsole("[WARNING] Item spawning requires Master Client privileges");
+                AddToConsole("[INFO] Attempting to spawn anyway...");
+            }
+
+            try
+            {
+                for (int i = 0; i < quantity; i++)
+                {
+                    // Calculate spawn position near the player
+                    Vector3 basePosition = targetPlayer.Center;
+                    Vector3 randomOffset = new Vector3(
+                        UnityEngine.Random.Range(-2f, 2f),
+                        UnityEngine.Random.Range(1f, 3f),
+                        UnityEngine.Random.Range(-2f, 2f)
+                    );
+                    Vector3 spawnPosition = basePosition + randomOffset;
+                    
+                    // Spawn the item using PhotonNetwork
+                    var spawnedObject = Photon.Pun.PhotonNetwork.Instantiate(
+                        "0_Items/" + itemPrefab.gameObject.name, 
+                        spawnPosition, 
+                        UnityEngine.Quaternion.identity
+                    );
+                    
+                    if (spawnedObject != null)
+                    {
+                        var spawnedItem = spawnedObject.GetComponent<Item>();
+                        if (spawnedItem != null)
+                        {
+                            // Set the item to non-kinematic so it falls naturally
+                            spawnedItem.SetKinematicNetworked(false, spawnPosition, UnityEngine.Quaternion.identity);
+                            
+                            AddToConsole($"[ADMIN] Spawned {itemPrefab.UIData?.itemName ?? itemPrefab.gameObject.name} near {targetPlayer.characterName}");
+                        }
+                    }
+                }
+            }
+            catch (System.Exception ex)
+            {
+                AddToConsole($"[ERROR] Failed to spawn item near player: {ex.Message}");
+                
+                // Fallback: Try using CharacterItems.SpawnItemInHand via reflection
+                try
+                {
+                    if (targetPlayer.refs?.items != null)
+                    {
+                        // Use reflection to access the internal SpawnItemInHand method
+                        var spawnItemMethod = typeof(CharacterItems).GetMethod("SpawnItemInHand", 
+                            System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+                        
+                        if (spawnItemMethod != null)
+                        {
+                            for (int i = 0; i < quantity; i++)
+                            {
+                                spawnItemMethod.Invoke(targetPlayer.refs.items, new object[] { itemPrefab.gameObject.name });
+                            }
+                            AddToConsole($"[ADMIN] Used fallback method to spawn items for {targetPlayer.characterName}");
+                        }
+                        else
+                        {
+                            AddToConsole("[ERROR] SpawnItemInHand method not found via reflection");
+                        }
+                    }
+                }
+                catch (System.Exception fallbackEx)
+                {
+                    AddToConsole($"[ERROR] Fallback method also failed: {fallbackEx.Message}");
+                }
+            }
         }
     }
 }
