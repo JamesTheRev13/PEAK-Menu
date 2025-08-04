@@ -1,8 +1,8 @@
-using UnityEngine;
-using System.Collections.Generic;
 using PEAK_Menu.Config;
 using PEAK_Menu.Menu.UI.Components;
 using PEAK_Menu.Utils;
+using System.Collections.Generic;
+using UnityEngine;
 
 namespace PEAK_Menu.Menu.UI.Tabs
 {
@@ -14,7 +14,7 @@ namespace PEAK_Menu.Menu.UI.Tabs
 
         private readonly PlayerDropdown _playerDropdown;
         private readonly ItemDropdown _itemDropdown;
-
+        
         public AdminTab(MenuManager menuManager, List<string> consoleOutput) 
             : base(menuManager, consoleOutput)
         {
@@ -45,6 +45,7 @@ namespace PEAK_Menu.Menu.UI.Tabs
             GUILayout.EndScrollView();
         }
 
+        // TODO: Move to player tab
         private void DrawTeleportCoordinatesSection()
         {
             GUILayout.Space(UIConstants.STANDARD_SPACING);
@@ -64,7 +65,6 @@ namespace PEAK_Menu.Menu.UI.Tabs
             
             DrawTeleportButtons();
         }
-
         private void DrawTeleportButtons()
         {
             GUILayout.BeginHorizontal();
@@ -195,35 +195,20 @@ namespace PEAK_Menu.Menu.UI.Tabs
             {
                 GUILayout.Label("Select an item from the dropdown to enable item actions", GUI.skin.box);
             }
-            else
+            else if (!player.IsLocal && !Photon.Pun.PhotonNetwork.IsMasterClient)
             {
-                var isLocalPlayer = player.IsLocal;
-                var giveMethodText = isLocalPlayer ? "Direct inventory addition" : "Spawn at player location";
-                GUILayout.Label($"Give: {giveMethodText}", GUI.skin.box);
-                GUILayout.Label("Drop: Always spawns at player's feet", GUI.skin.box);
-
-                if (!isLocalPlayer && !Photon.Pun.PhotonNetwork.IsMasterClient)
-                {
-                    var statusColor = GUI.color;
-                    GUI.color = Color.yellow;
-                    GUILayout.Label("Warning: Not Master Client - spawning may fail", GUI.skin.box);
-                    GUI.color = statusColor;
-                }
+                var statusColor = GUI.color;
+                GUI.color = Color.yellow;
+                GUILayout.Label("Warning: Not Master Client - spawning may fail", GUI.skin.box);
+                GUI.color = statusColor;
             }
-
-            GUILayout.Space(UIConstants.SMALL_SPACING);
-            GUILayout.Label("Note: God Mode and Infinite Stamina are in Player tab");
-            GUILayout.Label("(These features only work for the local player)");
+            
         }
 
         private void DrawDevelopmentNotes()
         {
             GUILayout.Space(UIConstants.STANDARD_SPACING);
             GUILayout.Label("=== Development Notes ===");
-            GUILayout.Label("• Some multi-player actions may require RPC calls");
-            GUILayout.Label("• Remote player modifications under investigation");
-            GUILayout.Label("• God Mode, Infinite Stamina only work for local player");
-            GUILayout.Label("• Item giving may spawn items at player's feet for remote players");
             GUILayout.Label("• Use console for advanced admin commands");
             
             var hotkeyText = Plugin.PluginConfig?.MenuToggleKey?.Value.ToString() ?? "Insert";
@@ -251,15 +236,30 @@ namespace PEAK_Menu.Menu.UI.Tabs
                     return;
                 }
 
-                if (targetPlayer.IsLocal)
+                //if (targetPlayer.IsLocal)
+                //{
+                //    GiveItemToLocalPlayer(itemPrefab, quantity);
+                //}
+                //else
+                //{
+                //    SpawnItemsNearPlayer(targetPlayer, itemPrefab, quantity);
+                //}
+
+                if (targetPlayer.refs?.items != null)
                 {
-                    GiveItemToLocalPlayer(itemPrefab, quantity);
+                    if (targetPlayer.photonView != null)
+                    {
+                        for (int i = 0; i < quantity; i++)
+                        {
+                            targetPlayer.photonView.RPC("RPC_SpawnItemInHandMaster", Photon.Pun.RpcTarget.All, itemPrefab.gameObject.name);
+                        }
+                    }
+                    else
+                    {
+                        AddToConsole("[ERROR] SpawnItemInHand method not found");
+                    }
                 }
-                else
-                {
-                    SpawnItemsNearPlayer(targetPlayer, itemPrefab, quantity);
-                }
-                
+
                 AddToConsole($"[ADMIN] Gave {quantity}x {itemName} to {targetPlayer.characterName}");
             }
             catch (System.Exception ex)
@@ -376,9 +376,9 @@ namespace PEAK_Menu.Menu.UI.Tabs
                     // Calculate spawn position near the player
                     Vector3 basePosition = targetPlayer.Center;
                     Vector3 randomOffset = new Vector3(
-                        UnityEngine.Random.Range(-2f, 2f),
-                        UnityEngine.Random.Range(1f, 3f),
-                        UnityEngine.Random.Range(-2f, 2f)
+                        Random.Range(-2f, 2f),
+                        Random.Range(1f, 3f),
+                        Random.Range(-2f, 2f)
                     );
                     Vector3 spawnPosition = basePosition + randomOffset;
                     
@@ -386,7 +386,7 @@ namespace PEAK_Menu.Menu.UI.Tabs
                     var spawnedObject = Photon.Pun.PhotonNetwork.Instantiate(
                         "0_Items/" + itemPrefab.gameObject.name, 
                         spawnPosition, 
-                        UnityEngine.Quaternion.identity
+                        Quaternion.identity
                     );
                     
                     if (spawnedObject != null)
@@ -395,7 +395,7 @@ namespace PEAK_Menu.Menu.UI.Tabs
                         if (spawnedItem != null)
                         {
                             // Set the item to non-kinematic so it falls naturally
-                            spawnedItem.SetKinematicNetworked(false, spawnPosition, UnityEngine.Quaternion.identity);
+                            spawnedItem.SetKinematicNetworked(false, spawnPosition, Quaternion.identity);
                         }
                     }
                 }
@@ -412,20 +412,16 @@ namespace PEAK_Menu.Menu.UI.Tabs
                 {
                     if (targetPlayer.refs?.items != null)
                     {
-                        var spawnItemMethod = typeof(CharacterItems).GetMethod("SpawnItemInHand", 
-                            System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
-                        
-                        if (spawnItemMethod != null)
+                        if (targetPlayer.photonView != null)
                         {
                             for (int i = 0; i < quantity; i++)
                             {
-                                spawnItemMethod.Invoke(targetPlayer.refs.items, new object[] { itemPrefab.gameObject.name });
+                                targetPlayer.photonView.RPC("RPC_SpawnItemInHandMaster", Photon.Pun.RpcTarget.All, itemPrefab.gameObject.name);
                             }
-                            AddToConsole($"[ADMIN] Used fallback method to spawn items for {targetPlayer.characterName}");
                         }
                         else
                         {
-                            AddToConsole("[ERROR] SpawnItemInHand method not found via reflection");
+                            AddToConsole("[ERROR] SpawnItemInHand method not found");
                         }
                     }
                 }

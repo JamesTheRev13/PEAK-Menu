@@ -12,6 +12,7 @@ namespace PEAK_Menu.Menu
         private RainbowManager _rainbowManager;
         private NoClipManager _noClipManager;
         private PlayerManager _playerManager;
+        private DebugConsoleManager _debugConsoleManager;
 
         public bool IsMenuOpen => _isMenuOpen;
 
@@ -24,6 +25,10 @@ namespace PEAK_Menu.Menu
                 _rainbowManager = new RainbowManager();
                 _noClipManager = new NoClipManager();
                 _playerManager = new PlayerManager();
+                _debugConsoleManager = new DebugConsoleManager();
+                
+                _debugConsoleManager.Initialize();
+                
                 Plugin.Log.LogInfo("Menu system initialized");
             }
             catch (System.Exception ex)
@@ -51,6 +56,17 @@ namespace PEAK_Menu.Menu
                     {
                         _noClipManager.ToggleNoClip();
                         AddToConsole($"[HOTKEY] NoClip {(_noClipManager.IsNoClipEnabled ? "enabled" : "disabled")}");
+                    }
+                }
+
+                // Handle Debug Console toggle hotkey
+                if (Plugin.PluginConfig?.DebugConsoleToggleKey?.Value != null && 
+                    Input.GetKeyDown(Plugin.PluginConfig.DebugConsoleToggleKey.Value))
+                {
+                    if (_debugConsoleManager != null)
+                    {
+                        _debugConsoleManager.ToggleDebugConsole();
+                        AddToConsole($"[HOTKEY] Debug Console {(_debugConsoleManager.IsDebugConsoleOpen ? "opened" : "closed")}");
                     }
                 }
 
@@ -83,9 +99,9 @@ namespace PEAK_Menu.Menu
             
             if (_isMenuOpen)
             {
-                AddToConsole($"=== {MyPluginInfo.PLUGIN_NAME} Menu Opened ===");
                 AddToConsole("Type 'help' for available commands");
                 AddToConsole("Press ESC to close menu");
+                AddToConsole($"Press {Plugin.PluginConfig.DebugConsoleToggleKey.Value} to toggle debug console");
             }
         }
 
@@ -128,12 +144,18 @@ namespace PEAK_Menu.Menu
             return _playerManager;
         }
 
+        public DebugConsoleManager GetDebugConsoleManager()
+        {
+            return _debugConsoleManager;
+        }
+
         public void Cleanup()
         {
             try
             {
                 _rainbowManager?.DisableRainbow();
                 _noClipManager?.DisableNoClip();
+                _debugConsoleManager?.RestoreOriginalState();
                 _commandManager?.Cleanup();
             }
             catch (System.Exception ex)

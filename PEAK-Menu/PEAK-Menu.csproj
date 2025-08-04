@@ -46,5 +46,8 @@
     <Reference Include="Zorro.Core.Runtime">
       <HintPath>C:\Program Files (x86)\Steam\steamapps\common\PEAK\PEAK_Data\Managed\Zorro.Core.Runtime.dll</HintPath>
     </Reference>
+    <Reference Include="Zorro.UI.Runtime">
+      <HintPath>C:\Program Files (x86)\Steam\steamapps\common\PEAK\PEAK_Data\Managed\Zorro.Core.Runtime.dll</HintPath>
+    </Reference>
   </ItemGroup>
 </Project>

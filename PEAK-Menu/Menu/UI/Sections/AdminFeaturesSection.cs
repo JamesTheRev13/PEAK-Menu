@@ -23,6 +23,7 @@ namespace PEAK_Menu.Menu.UI.Sections
             DrawGodModeToggle(character, addToConsole);
             DrawInfiniteStaminaToggle(character, addToConsole);
             DrawTeleportToPingToggle(addToConsole);
+            DrawDebugConsoleToggle(addToConsole);
             DrawNoClipControls(addToConsole);
             DrawAdminHealButton(character, addToConsole);
         }
@@ -66,6 +67,44 @@ namespace PEAK_Menu.Menu.UI.Sections
                 {
                     addToConsole("[INFO] Ping will work normally without teleporting");
                 }
+            }
+        }
+
+        private void DrawDebugConsoleToggle(Action<string> addToConsole)
+        {
+            var debugConsoleManager = Plugin.Instance._menuManager.GetDebugConsoleManager();
+            if (debugConsoleManager != null)
+            {
+                var isDebugOpen = debugConsoleManager.IsDebugConsoleOpen;
+                var buttonColor = GUI.backgroundColor;
+                GUI.backgroundColor = isDebugOpen ? Color.red : Color.green;
+                
+                if (GUILayout.Button(isDebugOpen ? "Close Debug Console" : "Open Debug Console", GUILayout.Width(180)))
+                {
+                    debugConsoleManager.ToggleDebugConsole();
+                    addToConsole($"[ADMIN] Debug console {(debugConsoleManager.IsDebugConsoleOpen ? "opened" : "closed")}");
+                    
+                    if (debugConsoleManager.IsDebugConsoleOpen)
+                    {
+                        addToConsole($"[INFO] Or use {Plugin.PluginConfig.DebugConsoleToggleKey.Value} hotkey to toggle");
+                        addToConsole("[INFO] Access full game console with command history & autocomplete");
+                    }
+                }
+                
+                GUI.backgroundColor = buttonColor;
+                
+                // Status indicator
+                GUILayout.BeginHorizontal();
+                var statusColor = isDebugOpen ? Color.green : Color.gray;
+                var originalColor = GUI.color;
+                GUI.color = statusColor;
+                GUILayout.Label($"Status: {(isDebugOpen ? "OPEN" : "CLOSED")}", GUILayout.Width(100));
+                GUI.color = originalColor;
+                GUILayout.EndHorizontal();
+            }
+            else
+            {
+                GUILayout.Label("Debug Console Manager not available", GUILayout.Width(200));
             }
         }
 

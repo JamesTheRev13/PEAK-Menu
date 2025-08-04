@@ -94,6 +94,9 @@ namespace PEAK_Menu.Commands
                 // Admin commands
                 RegisterCommand(new AdminCommand());
                 
+                // Debug console command (game's built in dev console)
+                RegisterCommand(new DebugConsoleCommand());
+                
                 Plugin.Log.LogInfo($"Registered {_commands.Count} commands successfully");
             }
             catch (Exception ex)

@@ -9,7 +9,8 @@ namespace PEAK_Menu.Utils
         private bool _noWeightEnabled = false;
         private bool _afflictionImmunityEnabled = false;
         private bool _speedModEnabled = false;
-        // TODO: Jump modifications are not fully implemented yet
+        // TODO: Jump/climb modifications are not fully implemented yet
+        // Investigate Jump RPC
         private bool _jumpModEnabled = false;
         private bool _climbModEnabled = false;
 
@@ -17,8 +18,6 @@ namespace PEAK_Menu.Utils
         private static FieldInfo _movementModifierField;
         private static FieldInfo _jumpGravityField;
         private static FieldInfo _fallDamageTimeField;
-        // TODO: Infinite stamina is already handled in AdminCommand - might need to refactor for consistency or connect the two
-        private static PropertyInfo _infiniteStaminaProperty;
         private static PropertyInfo _statusLockProperty;
 
         static PlayerManager()
@@ -34,8 +33,6 @@ namespace PEAK_Menu.Utils
                     BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
 
                 var characterType = typeof(Character);
-                _infiniteStaminaProperty = characterType.GetProperty("infiniteStam", 
-                    BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
                 _statusLockProperty = characterType.GetProperty("statusesLocked", 
                     BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
             }
@@ -59,7 +56,6 @@ namespace PEAK_Menu.Utils
         public void SetNoWeight(bool enabled)
         {
             _noWeightEnabled = enabled;
-            // TODO: This needs to be implemented via Harmony patches
             Plugin.Log?.LogInfo($"No weight: {(enabled ? "enabled" : "disabled")}");
         }
 

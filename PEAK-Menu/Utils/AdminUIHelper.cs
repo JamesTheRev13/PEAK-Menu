@@ -1,5 +1,3 @@
-using UnityEngine;
-
 namespace PEAK_Menu.Utils
 {
     public static class AdminUIHelper
@@ -33,7 +31,6 @@ namespace PEAK_Menu.Utils
             }
         }
 
-        // NEW: Helper method to generate proper toggle commands
         private static string GenerateToggleCommand(string commandType, string playerName)
         {
             var character = Character.localCharacter;

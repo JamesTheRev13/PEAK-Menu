@@ -3,6 +3,15 @@ using System.Collections.Generic;
 using PEAK_Menu.Config;
 using PEAK_Menu.Menu.UI.Tabs;
 
+/* TODO: INVESTIGATE below for blocking input and cursor visibility when menu opens
+  GUIManager.cs
+  public void UpdateWindowStatus()
+    {
+        windowShowingCursor = false;
+        windowBlockingInput = false;
+
+*/
+
 namespace PEAK_Menu.Menu
 {
     public class MenuUI

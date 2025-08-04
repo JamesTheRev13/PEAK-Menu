@@ -3,6 +3,8 @@ using System.Linq;
 using UnityEngine;
 using UnityEngine.UIElements;
 
+// TODO: Investigate CharacterAfflictions.SyncStatusesRPC for altering other players' statuses
+
 namespace PEAK_Menu.Commands
 {
     public class AdminCommand : BaseCommand
@@ -78,9 +80,6 @@ Note: Use 'all' as player name to affect all players";
                     break;
                 case "revive":
                     HandleReviveCommand(parsed);
-                    break;
-                case "rescue":
-                    HandleRescueCommand(parsed);
                     break;
                 case "goto":
                     HandleGotoCommand(parsed);
@@ -328,7 +327,7 @@ Note: Use 'all' as player name to affect all players";
                 }
             }
         }
-
+        // Investigate CharacterAfflictions.SyncStatusesRPC for altering other players' statuses
         private void HandleHealCommand(ParameterParser.ParsedParameters parsed)
         {
             if (string.IsNullOrEmpty(parsed.PlayerName))
@@ -360,7 +359,7 @@ Note: Use 'all' as player name to affect all players";
                 LogInfo($"Fully healed player: {character.characterName}");
             }
         }
-
+        // TODO: Add revive all players command (HandleEmergencyHealAllCommand already does this partially, so maybe just wire that up to the UI)
         private void HandleReviveCommand(ParameterParser.ParsedParameters parsed)
         {
             if (string.IsNullOrEmpty(parsed.PlayerName))
@@ -394,10 +393,7 @@ Note: Use 'all' as player name to affect all players";
                             var basicReviveMethod = typeof(Character).GetMethod("RPCA_Revive", 
                                 System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic);
 
-                            if (basicReviveMethod != null)
-                            {
-                                basicReviveMethod.Invoke(character, new object[] { true });
-                            }
+                            basicReviveMethod?.Invoke(character, new object[] { true });
                         }
                         
                         LogInfo($"Revived player: {character.characterName}");
@@ -410,61 +406,6 @@ Note: Use 'all' as player name to affect all players";
                 else
                 {
                     LogWarning($"Player {character.characterName} is not dead or passed out");
-                }
-            }
-        }
-
-        private void HandleRescueCommand(ParameterParser.ParsedParameters parsed)
-        {
-            if (string.IsNullOrEmpty(parsed.PlayerName))
-            {
-                LogError("Usage: admin rescue <player>");
-                return;
-            }
-
-            var targets = ParameterParser.GetTargetPlayers(parsed.PlayerName, out string error);
-            if (!string.IsNullOrEmpty(error))
-            {
-                LogError(error);
-                return;
-            }
-
-            var localPlayer = Character.localCharacter;
-            if (localPlayer == null)
-            {
-                LogError("Cannot rescue: Local player not found");
-                return;
-            }
-
-            Vector3 rescuePosition = localPlayer.Center + localPlayer.data.lookDirection * 3f;
-
-            foreach (var character in targets)
-            {
-                if (character == localPlayer)
-                {
-                    LogWarning("Cannot rescue yourself");
-                    continue;
-                }
-
-                try
-                {
-                    // Teleport player to rescue position
-                    var warpMethod = typeof(Character).GetMethod("WarpPlayerRPC", 
-                        System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic);
-
-                    if (character.photonView != null)
-                    {
-                        character.photonView.RPC("WarpPlayerRPC", Photon.Pun.RpcTarget.All, rescuePosition, true);
-                        LogInfo($"Rescued player {character.characterName} to your location");
-                    }
-                    else
-                    {
-                        LogError($"Could not rescue {character.characterName}: PhotonView not found");
-                    }
-                }
-                catch (System.Exception ex)
-                {
-                    LogError($"Failed to rescue {character.characterName}: {ex.Message}");
                 }
             }
         }
@@ -601,7 +542,7 @@ Note: Use 'all' as player name to affect all players";
 
                 try
                 {
-                    // Full heal
+                    // Full heal (TODO: Replace with RPC friendly method to sync with other clients)
                     character.refs.afflictions.SetStatus(CharacterAfflictions.STATUSTYPE.Injury, 0f);
                     character.refs.afflictions.SetStatus(CharacterAfflictions.STATUSTYPE.Hunger, 0f);
                     character.refs.afflictions.SetStatus(CharacterAfflictions.STATUSTYPE.Cold, 0f);
@@ -856,6 +797,10 @@ Note: Use 'all' as player name to affect all players";
                 LogError($"Failed to teleport to coordinates: {ex.Message}");
             }
         }
+
+        // Add Force Win Command
+        // Add Force Lose Command
+        // Add kick player Command
 
         public override bool CanExecute()
         {

@@ -7,6 +7,7 @@ namespace PEAK_Menu.Config
     {
         public ConfigEntry<KeyCode> MenuToggleKey { get; }
         public ConfigEntry<KeyCode> NoClipToggleKey { get; }
+        public ConfigEntry<KeyCode> DebugConsoleToggleKey { get; }
         public ConfigEntry<bool> EnableDebugMode { get; }
         public ConfigEntry<float> MenuScale { get; }
         public ConfigEntry<bool> NoFallDamage { get; }
@@ -21,6 +22,7 @@ namespace PEAK_Menu.Config
         {
             MenuToggleKey = config.Bind("Controls", "MenuToggleKey", KeyCode.Insert, "Key to toggle the menu");
             NoClipToggleKey = config.Bind("Controls", "NoClipToggleKey", KeyCode.Delete, "Key to toggle NoClip");
+            DebugConsoleToggleKey = config.Bind("Controls", "DebugConsoleToggleKey", KeyCode.Home, "Key to toggle the built-in debug console");
             EnableDebugMode = config.Bind("General", "EnableDebugMode", false, "Enable debug logging");
             MenuScale = config.Bind("UI", "MenuScale", 1.0f, new ConfigDescription("UI scale factor", new AcceptableValueRange<float>(0.5f, 2.0f)));
             NoFallDamage = config.Bind("Player", "NoFallDamage", false, "Disable fall damage");
