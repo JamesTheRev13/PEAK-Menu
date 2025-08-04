@@ -13,6 +13,30 @@ namespace PEAK_Menu.Utils
         public bool IsDebugConsoleOpen => DebugUIHandler.IsOpen;
         public bool IsDebugConsoleAllowed => DebugUIHandler.AllowOpen;
 
+        public void RegisterCustomPages()
+        {
+            try
+            {
+                var debugHandler = DebugUIHandler.Instance;
+                if (debugHandler == null)
+                {
+                    Plugin.Log.LogWarning("DebugUIHandler not available for page registration");
+                    return;
+                }
+
+                // Register our custom debug pages
+                debugHandler.RegisterPage("PEAK Player", () => new DebugPages.PlayerDebugPage());
+                debugHandler.RegisterPage("PEAK Admin", () => new DebugPages.AdminDebugPage());
+                debugHandler.RegisterPage("PEAK Environment", () => new DebugPages.EnvironmentDebugPage());
+
+                Plugin.Log.LogInfo("Custom debug pages registered successfully");
+            }
+            catch (System.Exception ex)
+            {
+                Plugin.Log.LogError($"Error registering custom debug pages: {ex.Message}");
+            }
+        }
+
         public void Initialize()
         {
             if (_wasInitialized) return;
@@ -22,6 +46,9 @@ namespace PEAK_Menu.Utils
                 // Store original AllowOpen state
                 _allowOpenOriginal = DebugUIHandler.AllowOpen;
                 _wasInitialized = true;
+                
+                // Register our custom pages
+                RegisterCustomPages();
                 
                 Plugin.Log.LogInfo("Debug Console Manager initialized");
                 Plugin.Log.LogInfo($"Original AllowOpen state: {_allowOpenOriginal}");

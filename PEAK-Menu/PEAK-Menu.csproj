@@ -47,7 +47,19 @@
       <HintPath>C:\Program Files (x86)\Steam\steamapps\common\PEAK\PEAK_Data\Managed\Zorro.Core.Runtime.dll</HintPath>
     </Reference>
     <Reference Include="Zorro.UI.Runtime">
-      <HintPath>C:\Program Files (x86)\Steam\steamapps\common\PEAK\PEAK_Data\Managed\Zorro.Core.Runtime.dll</HintPath>
+      <HintPath>C:\Program Files (x86)\Steam\steamapps\common\PEAK\PEAK_Data\Managed\Zorro.UI.Runtime</HintPath>
+    </Reference>
+    <Reference Include="Zorro.PhotonUtility">
+      <HintPath>C:\Program Files (x86)\Steam\steamapps\common\PEAK\PEAK_Data\Managed\Zorro.PhotonUtility</HintPath>
+    </Reference>
+    <Reference Include="Zorro.Settings.Runtime">
+      <HintPath>C:\Program Files (x86)\Steam\steamapps\common\PEAK\PEAK_Data\Managed\Zorro.Settings.Runtime</HintPath>
+    </Reference>
+    <Reference Include="Zorro.JiggleBones">
+      <HintPath>C:\Program Files (x86)\Steam\steamapps\common\PEAK\PEAK_Data\Managed\Zorro.JiggleBones</HintPath>
+    </Reference>
+    <Reference Include="Zorro.ControllerSupport">
+      <HintPath>C:\Program Files (x86)\Steam\steamapps\common\PEAK\PEAK_Data\Managed\Zorro.ControllerSupport</HintPath>
     </Reference>
   </ItemGroup>
 </Project>
