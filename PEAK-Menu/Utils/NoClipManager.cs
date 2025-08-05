@@ -61,7 +61,7 @@ namespace PEAK_Menu.Utils
             // Disable collisions for true NoClip behavior
             DisableCharacterCollisions(character);
             
-            Plugin.Log.LogInfo("Enhanced NoClip enabled (FlyMod style with collision disabled)");
+            Plugin.Log.LogInfo("NoClip enabled");
         }
 
         public void DisableNoClip()

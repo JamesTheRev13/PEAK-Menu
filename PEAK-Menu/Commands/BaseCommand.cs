@@ -16,19 +16,16 @@ namespace PEAK_Menu.Commands
         protected void LogInfo(string message)
         {
             Plugin.Log.LogInfo($"[{Name}] {message}");
-            Plugin.Instance?._menuManager?.AddToConsole($"[INFO] {message}");
         }
 
         protected void LogError(string message)
         {
             Plugin.Log.LogError($"[{Name}] {message}");
-            Plugin.Instance?._menuManager?.AddToConsole($"[ERROR] {message}");
         }
 
         protected void LogWarning(string message)
         {
             Plugin.Log.LogWarning($"[{Name}] {message}");
-            Plugin.Instance?._menuManager?.AddToConsole($"[WARNING] {message}");
         }
     }
 }

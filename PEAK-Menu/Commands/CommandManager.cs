@@ -76,7 +76,6 @@ namespace PEAK_Menu.Commands
             {
                 // Core commands
                 RegisterCommand(new HelpCommand(this));
-                RegisterCommand(new ClearCommand());
                 RegisterCommand(new VersionCommand());
                 
                 // Game information commands
@@ -93,10 +92,7 @@ namespace PEAK_Menu.Commands
 
                 // Admin commands
                 RegisterCommand(new AdminCommand());
-                
-                // Debug console command (game's built in dev console)
-                RegisterCommand(new DebugConsoleCommand());
-                
+                                
                 Plugin.Log.LogInfo($"Registered {_commands.Count} commands successfully");
             }
             catch (Exception ex)

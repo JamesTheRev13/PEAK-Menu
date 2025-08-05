@@ -1,8 +1,9 @@
-using PEAK_Menu.Utils.DebugPages;
+using PEAK_Menu.Commands;
 using PEAK_Menu.Utils.CLI;
+using PEAK_Menu.Utils.DebugPages;
+using System.Reflection;
 using UnityEngine;
 using Zorro.Core.CLI;
-using System.Reflection;
 
 namespace PEAK_Menu.Utils
 {
@@ -16,6 +17,7 @@ namespace PEAK_Menu.Utils
         private RainbowManager _rainbowManager;
         private NoClipManager _noClipManager;
         private PlayerManager _playerManager;
+        private CommandManager _commandManager = new CommandManager();
 
         static DebugConsoleManager()
         {
@@ -267,6 +269,19 @@ namespace PEAK_Menu.Utils
             catch (System.Exception ex)
             {
                 return $"Error getting debug console status: {ex.Message}";
+            }
+        }
+        // LEGACY - Needs to be replaced by CLI command once commands are migrated properly and all work
+        public bool ExecuteCommand(string commandLine)
+        {
+            try
+            {
+                return _commandManager?.ExecuteCommand(commandLine) ?? false;
+            }
+            catch (System.Exception ex)
+            {
+                Plugin.Log.LogError($"Error executing command: {ex.Message}");
+                return false;
             }
         }
     }

@@ -615,10 +615,10 @@ namespace PEAK_Menu.Utils.DebugPages
 
         private void ExecuteMenuCommand(string command)
         {
-            var menuManager = Plugin.Instance?._menuManager;
-            if (menuManager != null)
+            var debugManager = Plugin.Instance?._debugConsoleManager;
+            if (debugManager != null)
             {
-                menuManager.ExecuteCommand(command);
+                debugManager.ExecuteCommand(command);
             }
         }
 

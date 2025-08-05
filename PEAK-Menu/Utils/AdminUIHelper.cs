@@ -4,7 +4,7 @@ namespace PEAK_Menu.Utils
     {
         public static void ExecuteQuickAction(string action, string playerName = null)
         {
-            var menuManager = Plugin.Instance?._menuManager;
+            var menuManager = Plugin.Instance?._debugConsoleManager;
             if (menuManager == null) return;
 
             string command = action.ToLower() switch
@@ -57,7 +57,7 @@ namespace PEAK_Menu.Utils
 
         public static void SetPlayerStatus(string playerName, string statusType, float value)
         {
-            var menuManager = Plugin.Instance?._menuManager;
+            var menuManager = Plugin.Instance?._debugConsoleManager;
             if (menuManager == null) return;
 
             var command = $"admin {statusType} \"{playerName}\" {value:F2}";
@@ -66,7 +66,7 @@ namespace PEAK_Menu.Utils
 
         public static void TeleportToCoordinates(float x, float y, float z)
         {
-            var menuManager = Plugin.Instance?._menuManager;
+            var menuManager = Plugin.Instance?._debugConsoleManager;
             if (menuManager == null) return;
 
             var command = $"admin teleport-coords {x:F1} {y:F1} {z:F1}";

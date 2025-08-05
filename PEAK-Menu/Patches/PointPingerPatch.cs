@@ -29,9 +29,6 @@ namespace PEAK_Menu.Patches
                         });
 
                         Plugin.Log?.LogInfo($"[TeleportToPing] Teleported to ping at: {safePoint}");
-                        
-                        // Also add to console if menu manager is available
-                        Plugin.Instance?._menuManager?.AddToConsole($"[INFO] Teleported to ping at: {safePoint}");
                     }
                 }
             }

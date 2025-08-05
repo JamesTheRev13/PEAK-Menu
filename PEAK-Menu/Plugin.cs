@@ -3,7 +3,6 @@ using BepInEx.Logging;
 using HarmonyLib;
 using System.Reflection;
 using PEAK_Menu.Config;
-using PEAK_Menu.Menu;
 using PEAK_Menu.Utils;
 using UnityEngine;
 
@@ -17,7 +16,6 @@ namespace PEAK_Menu
         public static PluginConfig PluginConfig { get; private set; }
         
         private Harmony _harmony;
-        internal MenuManager _menuManager; // Legacy menu only
         internal DebugConsoleManager _debugConsoleManager; // Primary system
 
         private void Awake()
@@ -29,7 +27,6 @@ namespace PEAK_Menu
             PluginConfig = new PluginConfig(Config);
             
             // Initialize both systems
-            _menuManager = new MenuManager(); // Legacy menu only
             _debugConsoleManager = new DebugConsoleManager(); // Primary system with all managers
             
             // Apply Harmony patches
@@ -40,7 +37,6 @@ namespace PEAK_Menu
 
         private void Start()
         {
-            _menuManager.Initialize(); // Legacy menu
             _debugConsoleManager.Initialize(); // Primary system
             
             // Register console commands
@@ -49,16 +45,14 @@ namespace PEAK_Menu
         
         private System.Collections.IEnumerator DelayedConsoleRegistration()
         {
-            yield return new UnityEngine.WaitForSeconds(1f);
+            yield return new WaitForSeconds(1f);
             
             try 
             {
                 _debugConsoleManager.RegisterConsoleCommands();
                 
                 Log.LogInfo("Console commands registered and available in the native debug console");
-                Log.LogInfo("Available commands: heal, kill, revive, teleport, goto, bring, godmode, infinitestamina");
-                Log.LogInfo("                   noclip, speed, jump, climb, listitems, giveitem, rainbow, showinventory");
-                Log.LogInfo($"Open the Debug Menu with {PluginConfig.DebugConsoleToggleKey.Value} and go to Console tab for native autocomplete");
+                Log.LogInfo($"Open the Debug Menu with {PluginConfig.DebugConsoleToggleKey.Value} ( or ` ) and go to Console tab for native autocomplete");
             }
             catch (System.Exception ex)
             {
@@ -83,13 +77,6 @@ namespace PEAK_Menu
 
         private void HandleInput()
         {
-            // Legacy menu toggle (Insert key)
-            if (PluginConfig?.MenuToggleKey?.Value != null && 
-                Input.GetKeyDown(PluginConfig.MenuToggleKey.Value))
-            {
-                _menuManager?.ToggleMenu();
-            }
-
             // Debug menu toggle (Home key) - PRIMARY SYSTEM
             if (PluginConfig?.DebugConsoleToggleKey?.Value != null && 
                 Input.GetKeyDown(PluginConfig.DebugConsoleToggleKey.Value))
@@ -105,19 +92,16 @@ namespace PEAK_Menu
                 if (noClipManager != null)
                 {
                     noClipManager.ToggleNoClip();
-                    _menuManager?.AddToConsole($"[HOTKEY] NoClip {(noClipManager.IsNoClipEnabled ? "enabled" : "disabled")}");
                 }
             }
         }
 
         private void OnGUI()
         {
-            _menuManager?.OnGUI(); // Only legacy menu uses OnGUI
         }
 
         private void OnDestroy()
         {
-            _menuManager?.Cleanup();
             _debugConsoleManager?.RestoreOriginalState();
             _harmony?.UnpatchSelf();
             Log.LogInfo($"{MyPluginInfo.PLUGIN_NAME} v{MyPluginInfo.PLUGIN_VERSION} is unloaded!");
