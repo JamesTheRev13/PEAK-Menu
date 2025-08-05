@@ -9,6 +9,8 @@ namespace PEAK_Menu.Utils.DebugPages
     public class AdminDebugPage : BaseCustomDebugPage
     {
         private FloatField _teleportX, _teleportY, _teleportZ;
+        private DropdownField _playerDropdown;
+        private DropdownField _itemDropdown;
 
         protected override void BuildContent()
         {
@@ -120,7 +122,7 @@ namespace PEAK_Menu.Utils.DebugPages
             }));
 
             // Live reactive player dropdown
-            var playerDropdown = CreateLiveDropdown("Select Player:", () => {
+            _playerDropdown = CreateLiveDropdown("Select Player:", () => {
                 var players = Character.AllCharacters?.ToArray() ?? new Character[0];
                 return players.Select(p => $"{p.characterName} {(p.data.dead ? "[DEAD]" : p.data.passedOut ? "[OUT]" : "[OK]")}").ToList();
             }, 0, (selectedPlayerName) => {
@@ -135,9 +137,9 @@ namespace PEAK_Menu.Utils.DebugPages
             {
                 var button = CreateButton(action, () => {
                     var players = Character.AllCharacters?.ToArray() ?? new Character[0];
-                    if (playerDropdown.index >= 0 && playerDropdown.index < players.Length)
+                    if (_playerDropdown.index >= 0 && _playerDropdown.index < players.Length)
                     {
-                        var selectedPlayer = players[playerDropdown.index];
+                        var selectedPlayer = players[_playerDropdown.index];
                         AdminUIHelper.ExecuteQuickAction(action.ToLower(), selectedPlayer.characterName);
                         AddToConsole($"[ADMIN] {action} action for {selectedPlayer.characterName}");
                     }
@@ -167,7 +169,7 @@ namespace PEAK_Menu.Utils.DebugPages
             }));
 
             // Live reactive item dropdown
-            var itemDropdown = CreateLiveDropdown("Select Item:", () => {
+            _itemDropdown = CreateLiveDropdown("Select Item:", () => {
                 var itemHelper = ItemDiscoveryHelper.Instance;
                 return itemHelper.GetItemNamesArray().ToList();
             }, 0, (selectedItemName) => {
@@ -179,13 +181,13 @@ namespace PEAK_Menu.Utils.DebugPages
 
             var giveButton = CreateButton("Give Item", () => {
                 var players = Character.AllCharacters?.ToArray() ?? new Character[0];
-                var playerDropdown = section.Q<DropdownField>("player-dropdown");
                 
-                if (playerDropdown != null && itemDropdown.index > 0 && 
-                    playerDropdown.index >= 0 && playerDropdown.index < players.Length)
+                if (_playerDropdown != null && _itemDropdown != null &&
+                    _playerDropdown.index >= 0 && _playerDropdown.index < players.Length &&
+                    _itemDropdown.index > 0) // Skip "Select Item..."
                 {
-                    var selectedPlayer = players[playerDropdown.index];
-                    var itemName = itemDropdown.value;
+                    var selectedPlayer = players[_playerDropdown.index];
+                    var itemName = _itemDropdown.value;
                     GiveItemToPlayer(selectedPlayer, itemName, 1);
                 }
                 else
@@ -198,13 +200,13 @@ namespace PEAK_Menu.Utils.DebugPages
 
             var dropButton = CreateButton("Drop Item", () => {
                 var players = Character.AllCharacters?.ToArray() ?? new Character[0];
-                var playerDropdown = section.Q<DropdownField>("player-dropdown");
                 
-                if (playerDropdown != null && itemDropdown.index > 0 && 
-                    playerDropdown.index >= 0 && playerDropdown.index < players.Length)
+                if (_playerDropdown != null && _itemDropdown != null &&
+                    _playerDropdown.index >= 0 && _playerDropdown.index < players.Length &&
+                    _itemDropdown.index > 0) // Skip "Select Item..."
                 {
-                    var selectedPlayer = players[playerDropdown.index];
-                    var itemName = itemDropdown.value;
+                    var selectedPlayer = players[_playerDropdown.index];
+                    var itemName = _itemDropdown.value;
                     DropItemNearPlayer(selectedPlayer, itemName, 1);
                 }
                 else

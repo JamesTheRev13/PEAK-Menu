@@ -13,21 +13,153 @@ namespace PEAK_Menu.Utils.DebugPages
         private VisualElement _rainbowSpeedContainer;
         private VisualElement _noClipControls;
 
+        // Flags to track if sections need rebuilding
+        private bool _managersInitialized = false;
+        private bool _sectionsBuilt = false;
+
         public PlayerDebugPage()
         {
-            _playerManager = Plugin.Instance?._menuManager?.GetPlayerManager();
-            _noClipManager = Plugin.Instance?._menuManager?.GetNoClipManager();
-            _rainbowManager = Plugin.Instance?._menuManager?.GetRainbowManager();
+            // Don't try to get managers here - they might not be initialized yet
+            AddToConsole("PlayerDebugPage created - managers will be initialized later");
         }
 
         protected override void BuildContent()
         {
+            // Always build the basic sections
             BuildPlayerInfoSection();
             BuildHealthSection();
+            
+            // Try to get managers and build dependent sections
+            TryInitializeManagers();
+            BuildManagerDependentSections();
+        }
+
+        private void TryInitializeManagers()
+        {
+            if (_managersInitialized) return;
+
+            try
+            {
+                _playerManager = Plugin.Instance?._menuManager?.GetPlayerManager();
+                _noClipManager = Plugin.Instance?._menuManager?.GetNoClipManager();
+                _rainbowManager = Plugin.Instance?._menuManager?.GetRainbowManager();
+
+                if (_playerManager != null && _noClipManager != null && _rainbowManager != null)
+                {
+                    _managersInitialized = true;
+                    AddToConsole("All managers initialized successfully");
+                }
+                else
+                {
+                    AddToConsole($"Managers status - Player: {(_playerManager != null ? "OK" : "NULL")}, " +
+                                $"NoClip: {(_noClipManager != null ? "OK" : "NULL")}, " +
+                                $"Rainbow: {(_rainbowManager != null ? "OK" : "NULL")}");
+                }
+            }
+            catch (System.Exception ex)
+            {
+                AddToConsole($"Error initializing managers: {ex.Message}");
+            }
+        }
+
+        private void BuildManagerDependentSections()
+        {
+            if (!_managersInitialized)
+            {
+                // Build placeholder sections that will be replaced when managers are ready
+                BuildPlaceholderSections();
+                return;
+            }
+
+            // Build actual sections with manager functionality
             BuildAppearanceSection();
             BuildMovementSection();
             BuildProtectionSection();
             BuildNoClipSection();
+            _sectionsBuilt = true;
+        }
+
+        private void BuildPlaceholderSections()
+        {
+            // Appearance placeholder
+            var appearanceSection = CreateSection("Appearance & Customization");
+            appearanceSection.Add(CreateLabel("Waiting for managers to initialize..."));
+            _scrollView.Add(appearanceSection);
+
+            // Movement placeholder  
+            var movementSection = CreateSection("Movement Enhancement");
+            movementSection.Add(CreateLabel("Waiting for managers to initialize..."));
+            _scrollView.Add(movementSection);
+
+            // Protection placeholder
+            var protectionSection = CreateSection("Protection Settings");
+            protectionSection.Add(CreateLabel("Waiting for managers to initialize..."));
+            _scrollView.Add(protectionSection);
+
+            // NoClip placeholder
+            var noClipSection = CreateSection("NoClip Controls");
+            noClipSection.Add(CreateLabel("Waiting for managers to initialize..."));
+            _scrollView.Add(noClipSection);
+        }
+
+        public override void UpdateContent()
+        {
+            // First, try to initialize managers if not done yet
+            if (!_managersInitialized)
+            {
+                TryInitializeManagers();
+                
+                // If managers are now ready and sections haven't been built, rebuild everything
+                if (_managersInitialized && !_sectionsBuilt)
+                {
+                    AddToConsole("Managers ready - rebuilding sections with full functionality");
+                    RebuildManagerDependentSections();
+                }
+            }
+
+            // Continue with normal reactive updates
+            base.UpdateContent();
+        }
+
+        private void RebuildManagerDependentSections()
+        {
+            // Remove placeholder sections (keep player info and health)
+            var elementsToRemove = new System.Collections.Generic.List<VisualElement>();
+            
+            // Find sections to remove (anything after the health section)
+            bool foundHealthSection = false;
+            foreach (var child in _scrollView.Children())
+            {
+                if (child is VisualElement section)
+                {
+                    // Look for the health section marker
+                    var firstChild = section.childCount > 0 ? section[0] as Label : null;
+                    if (firstChild?.text?.Contains("Health Management") == true)
+                    {
+                        foundHealthSection = true;
+                        continue;
+                    }
+                    
+                    // Remove everything after health section
+                    if (foundHealthSection)
+                    {
+                        elementsToRemove.Add(section);
+                    }
+                }
+            }
+
+            // Remove the placeholder sections
+            foreach (var element in elementsToRemove)
+            {
+                _scrollView.Remove(element);
+            }
+
+            // Build real sections
+            BuildAppearanceSection();
+            BuildMovementSection();
+            BuildProtectionSection();
+            BuildNoClipSection();
+            _sectionsBuilt = true;
         }
 
         private void BuildPlayerInfoSection()
@@ -105,6 +237,77 @@ namespace PEAK_Menu.Utils.DebugPages
 
             section.Add(buttonRow);
 
+            // Advanced Status Control Section
+            var statusSection = CreateSection("Advanced Status Control");
+            
+            // Status value slider
+            var statusSliderContainer = new VisualElement();
+            statusSliderContainer.style.flexDirection = FlexDirection.Row;
+            statusSliderContainer.style.marginBottom = 8;
+            statusSliderContainer.style.alignItems = Align.Center;
+
+            var statusLabel = CreateLabel("Status Value:");
+            statusLabel.style.width = 100;
+            
+            var statusSlider = new Slider(0f, 1f) { value = 0.5f };
+            statusSlider.style.flexGrow = 1;
+            statusSlider.style.marginLeft = 10;
+            statusSlider.style.marginRight = 10;
+            
+            var statusValueLabel = CreateLabel("0.50");
+            statusValueLabel.style.width = 50;
+            statusSlider.RegisterValueChangedCallback(evt => statusValueLabel.text = $"{evt.newValue:F2}");
+
+            statusSliderContainer.Add(statusLabel);
+            statusSliderContainer.Add(statusSlider);
+            statusSliderContainer.Add(statusValueLabel);
+            statusSection.Add(statusSliderContainer);
+
+            // Status action buttons
+            var statusButtonRow = CreateRowContainer();
+            
+            var setHealthButton = CreateButton("Set Health", () =>
+            {
+                var character = Character.localCharacter;
+                if (character != null)
+                {
+                    ExecuteMenuCommand($"admin health \"{character.characterName}\" {statusSlider.value}");
+                    AddToConsole($"Set health to {statusSlider.value * 100:F0}%");
+                }
+            });
+            setHealthButton.style.width = 90;
+            setHealthButton.style.marginRight = 5;
+
+            var setStaminaButton = CreateButton("Set Stamina", () =>
+            {
+                var character = Character.localCharacter;
+                if (character != null)
+                {
+                    ExecuteMenuCommand($"admin stamina \"{character.characterName}\" {statusSlider.value}");
+                    AddToConsole($"Set stamina to {statusSlider.value * 100:F0}%");
+                }
+            });
+            setStaminaButton.style.width = 90;
+            setStaminaButton.style.marginRight = 5;
+
+            var setHungerButton = CreateButton("Set Hunger", () =>
+            {
+                var character = Character.localCharacter;
+                if (character != null)
+                {
+                    ExecuteMenuCommand($"admin hunger \"{character.characterName}\" {statusSlider.value}");
+                    AddToConsole($"Set hunger to {statusSlider.value * 100:F0}%");
+                }
+            });
+            setHungerButton.style.width = 90;
+
+            statusButtonRow.Add(setHealthButton);
+            statusButtonRow.Add(setStaminaButton);
+            statusButtonRow.Add(setHungerButton);
+            statusSection.Add(statusButtonRow);
+
+            section.Add(statusSection);
+
             // Live reactive toggles that sync with actual game state
             section.Add(CreateLiveToggle("God Mode", 
                 () => Character.localCharacter?.statusesLocked ?? false,
@@ -135,7 +338,7 @@ namespace PEAK_Menu.Utils.DebugPages
         {
             var section = CreateSection("Appearance & Customization");
 
-            section.Add(CreateButton("Randomize Appearance", () => 
+            section.Add(CreateButton("Randomize Appearance", () =>
             {
                 ExecuteMenuCommand("customize randomize");
                 AddToConsole("Character appearance randomized");
@@ -144,7 +347,7 @@ namespace PEAK_Menu.Utils.DebugPages
             // Rainbow controls with live reactive updates
             if (_rainbowManager != null)
             {
-                section.Add(CreateLiveToggle("Rainbow Effect", 
+                section.Add(CreateLiveToggle("Rainbow Effect",
                     () => _rainbowManager.IsRainbowEnabled,
                     (enabled) => {
                         ExecuteMenuCommand($"customize rainbow {(enabled ? "on" : "off")}");
@@ -163,7 +366,7 @@ namespace PEAK_Menu.Utils.DebugPages
 
                 foreach (var (label, speed) in speedButtons)
                 {
-                    var speedButton = CreateButton(label, () => 
+                    var speedButton = CreateButton(label, () =>
                     {
                         ExecuteMenuCommand($"customize rainbow speed {speed}");
                         AddToConsole($"Rainbow speed: {label}");
@@ -174,7 +377,7 @@ namespace PEAK_Menu.Utils.DebugPages
                 }
 
                 section.Add(_rainbowSpeedContainer);
-                
+
                 // Register reactive visibility update
                 _liveUpdateCallbacks.Add(() => {
                     if (_rainbowSpeedContainer != null && _rainbowManager != null)
@@ -183,6 +386,9 @@ namespace PEAK_Menu.Utils.DebugPages
                         _rainbowSpeedContainer.style.display = shouldShow ? DisplayStyle.Flex : DisplayStyle.None;
                     }
                 });
+            } else
+            {
+                section.Add(CreateLabel("Rainbow manager not available"));
             }
 
             _scrollView.Add(section);
@@ -249,6 +455,42 @@ namespace PEAK_Menu.Utils.DebugPages
                 }
 
                 section.Add(presetsContainer);
+
+                // Teleport-to-Ping Controls Section (using existing system)
+                var teleportSection = CreateSection("Teleport-to-Ping Controls");
+                
+                // Use the existing teleport-to-ping toggle functionality
+                teleportSection.Add(CreateLiveToggle("Auto Teleport to Ping", 
+                    () => Plugin.PluginConfig.TeleportToPingEnabled.Value,
+                    (enabled) => {
+                        Plugin.PluginConfig.TeleportToPingEnabled.Value = enabled;
+                        AddToConsole($"Auto teleport to ping {(enabled ? "enabled" : "disabled")}");
+                        
+                        if (enabled)
+                        {
+                            AddToConsole("[INFO] You will now teleport when you ping locations");
+                            AddToConsole("[INFO] Hold ping key and click to place marker and teleport");
+                        }
+                        else
+                        {
+                            AddToConsole("[INFO] Ping will work normally without teleporting");
+                        }
+                    }));
+
+                // Status display
+                teleportSection.Add(CreateLiveLabel("Teleport Mode: ", () => {
+                    return Plugin.PluginConfig.TeleportToPingEnabled.Value ? "Auto (when pinging)" : "Disabled";
+                }));
+
+                // Instructions
+                teleportSection.Add(CreateLabel("How to use: Enable the toggle above, then use your normal ping"));
+                teleportSection.Add(CreateLabel("controls in-game. You'll teleport automatically when you ping."));
+
+                section.Add(teleportSection);
+            }
+            else
+            {
+                section.Add(CreateLabel("Player manager not available"));
             }
 
             _scrollView.Add(section);
@@ -269,7 +511,8 @@ namespace PEAK_Menu.Utils.DebugPages
             section.Add(CreateLiveToggle("No Weight Penalties", 
                 () => Plugin.PluginConfig.NoWeight.Value,
                 (enabled) => {
-                    ExecuteMenuCommand($"no-weight {(enabled ? "on" : "off")}");
+                    Plugin.PluginConfig.NoWeight.Value = enabled;
+                    _playerManager?.SetNoWeight(enabled);
                     AddToConsole($"No weight penalties {(enabled ? "enabled" : "disabled")}");
                 }));
 
@@ -351,6 +594,10 @@ namespace PEAK_Menu.Utils.DebugPages
                         _noClipControls.style.display = shouldShow ? DisplayStyle.Flex : DisplayStyle.None;
                     }
                 });
+            }
+            else
+            {
+                section.Add(CreateLabel("NoClip manager not available"));
             }
 
             _scrollView.Add(section);

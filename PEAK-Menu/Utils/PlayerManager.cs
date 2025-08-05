@@ -56,6 +56,10 @@ namespace PEAK_Menu.Utils
         public void SetNoWeight(bool enabled)
         {
             _noWeightEnabled = enabled;
+            
+            // Update the config to match the manager state
+            Plugin.PluginConfig.NoWeight.Value = enabled;
+            
             Plugin.Log?.LogInfo($"No weight: {(enabled ? "enabled" : "disabled")}");
         }
 

@@ -46,23 +46,17 @@ namespace PEAK_Menu.Utils
                 // Register our custom debug pages with style inheritance
                 debugHandler.RegisterPage("PEAK Player", () => 
                 {
-                    var page = new DebugPages.PlayerDebugPage();
-                    ApplyDebugConsoleStyles(page);
-                    return page;
+                    return new PlayerDebugPage();
                 });
                 
                 debugHandler.RegisterPage("PEAK Admin", () => 
                 {
-                    var page = new DebugPages.AdminDebugPage();
-                    ApplyDebugConsoleStyles(page);
-                    return page;
+                    return new AdminDebugPage();
                 });
                 
                 debugHandler.RegisterPage("PEAK Environment", () => 
                 {
-                    var page = new DebugPages.EnvironmentDebugPage();
-                    ApplyDebugConsoleStyles(page);
-                    return page;
+                    return new EnvironmentDebugPage();
                 });
 
                 Plugin.Log.LogInfo("Custom debug pages registered successfully");
@@ -73,26 +67,6 @@ namespace PEAK_Menu.Utils
             }
         }
 
-        private void ApplyDebugConsoleStyles(VisualElement page)
-        {
-            try
-            {
-                // Try to apply the same style sheets that the debug console uses
-                var debugHandler = DebugUIHandler.Instance;
-                if (debugHandler != null)
-                {
-                    var styleSheets = SingletonAsset<CoreGlobalDependencies>.Instance?.DebugPageStyleSheets;
-                    if (styleSheets != null)
-                    {
-                        page.styleSheets.Add(styleSheets);
-                    }
-                }
-            }
-            catch (System.Exception ex)
-            {
-                Plugin.Log?.LogWarning($"Could not apply debug console styles: {ex.Message}");
-            }
-        }
 
         public void Initialize()
         {
@@ -130,7 +104,7 @@ namespace PEAK_Menu.Utils
                         var currentPage = _currentPageField.GetValue(debugHandler);
                         
                         // Check if it's one of our custom debug pages
-                        if (currentPage is DebugPages.BaseCustomDebugPage customPage)
+                        if (currentPage is BaseCustomDebugPage customPage)
                         {
                             customPage.UpdateContent();
                         }

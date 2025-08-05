@@ -70,6 +70,7 @@ namespace PEAK_Menu.Utils.DebugPages
         // Live reactive label that updates based on a function
         protected Label CreateLiveLabel(string prefix, System.Func<string> valueGetter, string className = null)
         {
+            AddToConsole($"Creating live label for: {prefix}");
             var label = CreateLabel($"{prefix}{valueGetter()}", className);
             
             // Register for live updates
@@ -94,6 +95,7 @@ namespace PEAK_Menu.Utils.DebugPages
         // Live reactive toggle that syncs with actual game state
         protected Toggle CreateLiveToggle(string label, System.Func<bool> stateGetter, System.Action<bool> stateSetter)
         {
+            AddToConsole($"Creating live toggle for: {label}");
             var toggle = new Toggle(label) { value = stateGetter() };
             
             // Set up value change handler
@@ -144,27 +146,34 @@ namespace PEAK_Menu.Utils.DebugPages
             return toggle;
         }
 
-        // Live reactive slider that syncs with config values
+        // Live reactive slider that syncs with config values - FIXED RENDERING
         protected Slider CreateLiveSlider(string label, System.Func<float> valueGetter, System.Action<float> valueSetter, 
             float min, float max, VisualElement targetSection)
         {
+            AddToConsole($"Creating live slider for: {label}");
             var container = new VisualElement();
             container.style.flexDirection = FlexDirection.Row;
             container.style.marginBottom = 8;
             container.style.alignItems = Align.Center;
+            container.style.display = DisplayStyle.Flex; // Ensure it's visible
+            container.style.visibility = Visibility.Visible; // Ensure it's not hidden
 
             var labelElement = new Label(label);
             labelElement.style.width = 120;
             labelElement.style.color = Color.white;
+            labelElement.style.display = DisplayStyle.Flex;
             
             var slider = new Slider(min, max) { value = valueGetter() };
             slider.style.flexGrow = 1;
             slider.style.marginLeft = 10;
             slider.style.marginRight = 10;
+            slider.style.display = DisplayStyle.Flex;
+            slider.style.visibility = Visibility.Visible;
 
             var valueLabel = new Label($"{valueGetter():F2}");
             valueLabel.style.width = 50;
             valueLabel.style.color = Color.white;
+            valueLabel.style.display = DisplayStyle.Flex;
 
             // Set up value change handler
             slider.RegisterValueChangedCallback(evt => {
@@ -206,7 +215,13 @@ namespace PEAK_Menu.Utils.DebugPages
             container.Add(slider);
             container.Add(valueLabel);
             
+            // Ensure the container is added and visible
             targetSection.Add(container);
+            
+            // Force a layout update
+            container.MarkDirtyRepaint();
+            targetSection.MarkDirtyRepaint();
+            
             return slider;
         }
 
@@ -214,6 +229,7 @@ namespace PEAK_Menu.Utils.DebugPages
         protected DropdownField CreateLiveDropdown(string label, System.Func<System.Collections.Generic.List<string>> choicesGetter, 
             int defaultIndex, System.Action<string> onValueChanged)
         {
+            AddToConsole($"Creating live dropdown for: {label}");
             var container = new VisualElement();
             container.style.flexDirection = FlexDirection.Row;
             container.style.marginBottom = 5;

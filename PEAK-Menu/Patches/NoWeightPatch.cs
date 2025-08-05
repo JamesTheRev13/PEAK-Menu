@@ -17,8 +17,8 @@ namespace PEAK_Menu.Patches
                 var character = __instance.character;
                 if (character != null && character.IsLocal)
                 {
-                    var playerManager = Plugin.Instance?._menuManager?.GetPlayerManager();
-                    if (playerManager?.NoWeightEnabled == true)
+                    // Check the config directly to ensure sync with UI
+                    if (Plugin.PluginConfig?.NoWeight?.Value == true)
                     {
                         // Skip the original weight update method entirely
                         if (Plugin.PluginConfig?.EnableDebugMode?.Value == true)
@@ -36,6 +36,5 @@ namespace PEAK_Menu.Patches
 
             return true; // Run original method
         }
-
     }
 }

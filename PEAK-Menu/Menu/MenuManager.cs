@@ -30,6 +30,7 @@ namespace PEAK_Menu.Menu
                 _debugConsoleManager.Initialize();
                 
                 Plugin.Log.LogInfo("Menu system initialized");
+                Plugin.Log.LogInfo("All managers are now available for debug pages");
             }
             catch (System.Exception ex)
             {
