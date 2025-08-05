@@ -1,4 +1,7 @@
+using UnityEngine;
 using UnityEngine.UIElements;
+using Zorro.Core.CLI;
+using PEAK_Menu.Utils;
 
 namespace PEAK_Menu.Utils.DebugPages
 {
@@ -7,7 +10,8 @@ namespace PEAK_Menu.Utils.DebugPages
         private PlayerManager _playerManager;
         private NoClipManager _noClipManager;
         private RainbowManager _rainbowManager;
-        private Character _currentCharacter;
+        private VisualElement _rainbowSpeedContainer;
+        private VisualElement _noClipControls;
 
         public PlayerDebugPage()
         {
@@ -18,20 +22,6 @@ namespace PEAK_Menu.Utils.DebugPages
 
         protected override void BuildContent()
         {
-            RefreshPlayerInfo();
-        }
-
-        private void RefreshPlayerInfo()
-        {
-            _scrollView.Clear();
-            _currentCharacter = Character.localCharacter;
-
-            if (_currentCharacter == null)
-            {
-                _scrollView.Add(CreateLabel("No character found"));
-                return;
-            }
-
             BuildPlayerInfoSection();
             BuildHealthSection();
             BuildAppearanceSection();
@@ -44,19 +34,36 @@ namespace PEAK_Menu.Utils.DebugPages
         {
             var section = CreateSection("Player Information");
             
-            section.Add(CreateLabel($"Name: {_currentCharacter.characterName}"));
+            // Live reactive labels that update automatically
+            section.Add(CreateLiveLabel("Name: ", () => {
+                var character = Character.localCharacter;
+                return character?.characterName ?? "No character";
+            }));
             
-            // Use correct property access for health/stamina
-            var health = (1f - _currentCharacter.refs.afflictions.GetCurrentStatus(CharacterAfflictions.STATUSTYPE.Injury)) * 100f;
-            var stamina = _currentCharacter.GetTotalStamina() * 100f;
+            section.Add(CreateLiveLabel("Health: ", () => {
+                var character = Character.localCharacter;
+                if (character == null) return "N/A";
+                var health = (1f - character.refs.afflictions.GetCurrentStatus(CharacterAfflictions.STATUSTYPE.Injury)) * 100f;
+                return $"{health:F1}%";
+            }));
             
-            section.Add(CreateLabel($"Health: {health:F1}%"));
-            section.Add(CreateLabel($"Stamina: {stamina:F1}%"));
-            section.Add(CreateLabel($"Position: {_currentCharacter.Center:F1}"));
-            section.Add(CreateLabel($"Status: {(_currentCharacter.data.dead ? "Dead" : _currentCharacter.data.passedOut ? "Passed Out" : "Alive")}"));
-
-            // Refresh button
-            section.Add(CreateButton("Refresh Info", RefreshPlayerInfo));
+            section.Add(CreateLiveLabel("Stamina: ", () => {
+                var character = Character.localCharacter;
+                if (character == null) return "N/A";
+                var stamina = character.GetTotalStamina() * 100f;
+                return $"{stamina:F1}%";
+            }));
+            
+            section.Add(CreateLiveLabel("Position: ", () => {
+                var character = Character.localCharacter;
+                return character?.Center.ToString("F1") ?? "N/A";
+            }));
+            
+            section.Add(CreateLiveLabel("Status: ", () => {
+                var character = Character.localCharacter;
+                if (character == null) return "N/A";
+                return character.data.dead ? "Dead" : character.data.passedOut ? "Passed Out" : "Alive";
+            }));
 
             _scrollView.Add(section);
         }
@@ -65,57 +72,61 @@ namespace PEAK_Menu.Utils.DebugPages
         {
             var section = CreateSection("Health Management");
 
-            section.Add(CreateButton("Full Heal", () => 
+            var buttonRow = CreateRowContainer();
+            buttonRow.Add(CreateButton("Full Heal", () => 
             {
-                if (_currentCharacter != null)
+                var character = Character.localCharacter;
+                if (character != null)
                 {
-                    // Use existing admin command instead of duplicating logic
-                    ExecuteMenuCommand($"admin heal \"{_currentCharacter.characterName}\"");
+                    ExecuteMenuCommand($"admin heal \"{character.characterName}\"");
                     AddToConsole("Player fully healed");
-                    RefreshPlayerInfo();
                 }
             }));
 
-            section.Add(CreateButton("Clear All Status Effects", () => 
+            buttonRow.Add(CreateButton("Clear Status Effects", () => 
             {
-                if (_currentCharacter != null)
+                var character = Character.localCharacter;
+                if (character != null)
                 {
-                    // Use existing admin command instead of duplicating logic
-                    ExecuteMenuCommand($"admin clear-status \"{_currentCharacter.characterName}\"");
+                    ExecuteMenuCommand($"admin clear-status \"{character.characterName}\"");
                     AddToConsole("All status effects cleared");
-                    RefreshPlayerInfo();
                 }
             }));
 
-            section.Add(CreateButton("Revive", () => 
+            buttonRow.Add(CreateButton("Revive", () => 
             {
-                if (_currentCharacter != null)
+                var character = Character.localCharacter;
+                if (character != null)
                 {
-                    // Use existing admin command instead of duplicating logic
-                    ExecuteMenuCommand($"admin revive \"{_currentCharacter.characterName}\"");
+                    ExecuteMenuCommand($"admin revive \"{character.characterName}\"");
                     AddToConsole("Player revived");
-                    RefreshPlayerInfo();
                 }
             }));
 
-            // Use AdminUIHelper for god mode and infinite stamina like the existing UI does
-            section.Add(CreateToggle("God Mode", _currentCharacter?.statusesLocked ?? false, (enabled) =>
-            {
-                if (_currentCharacter != null)
-                {
-                    AdminUIHelper.ExecuteQuickAction("god-mode", _currentCharacter.characterName);
-                    AddToConsole($"God mode {(enabled ? "enabled" : "disabled")}");
-                }
-            }));
+            section.Add(buttonRow);
 
-            section.Add(CreateToggle("Infinite Stamina", _currentCharacter?.infiniteStam ?? false, (enabled) =>
-            {
-                if (_currentCharacter != null)
-                {
-                    AdminUIHelper.ExecuteQuickAction("infinite-stamina", _currentCharacter.characterName);
-                    AddToConsole($"Infinite stamina {(enabled ? "enabled" : "disabled")}");
-                }
-            }));
+            // Live reactive toggles that sync with actual game state
+            section.Add(CreateLiveToggle("God Mode", 
+                () => Character.localCharacter?.statusesLocked ?? false,
+                (enabled) => {
+                    var character = Character.localCharacter;
+                    if (character != null)
+                    {
+                        AdminUIHelper.ExecuteQuickAction("god-mode", character.characterName);
+                        AddToConsole($"God mode {(enabled ? "enabled" : "disabled")}");
+                    }
+                }));
+
+            section.Add(CreateLiveToggle("Infinite Stamina", 
+                () => Character.localCharacter?.infiniteStam ?? false,
+                (enabled) => {
+                    var character = Character.localCharacter;
+                    if (character != null)
+                    {
+                        AdminUIHelper.ExecuteQuickAction("infinite-stamina", character.characterName);
+                        AddToConsole($"Infinite stamina {(enabled ? "enabled" : "disabled")}");
+                    }
+                }));
 
             _scrollView.Add(section);
         }
@@ -126,52 +137,52 @@ namespace PEAK_Menu.Utils.DebugPages
 
             section.Add(CreateButton("Randomize Appearance", () => 
             {
-                // Use existing customize command instead of duplicating logic
                 ExecuteMenuCommand("customize randomize");
                 AddToConsole("Character appearance randomized");
             }));
 
-            // Rainbow controls - THIS BELONGS IN PLAYER SECTION, NOT ENVIRONMENT
+            // Rainbow controls with live reactive updates
             if (_rainbowManager != null)
             {
-                var isRainbowEnabled = _rainbowManager.IsRainbowEnabled;
-                
-                section.Add(CreateToggle("Rainbow Effect", isRainbowEnabled, (enabled) =>
+                section.Add(CreateLiveToggle("Rainbow Effect", 
+                    () => _rainbowManager.IsRainbowEnabled,
+                    (enabled) => {
+                        ExecuteMenuCommand($"customize rainbow {(enabled ? "on" : "off")}");
+                        AddToConsole($"Rainbow effect {(enabled ? "enabled" : "disabled")}");
+                    }));
+
+                // Speed container that shows/hides reactively
+                _rainbowSpeedContainer = CreateRowContainer();
+                var speedButtons = new[]
                 {
-                    // Use existing customize command instead of duplicating logic
-                    ExecuteMenuCommand($"customize rainbow {(enabled ? "on" : "off")}");
-                    AddToConsole($"Rainbow effect {(enabled ? "enabled" : "disabled")}");
-                }));
+                    ("Slow", 0.5f),
+                    ("Normal", 1.0f),
+                    ("Fast", 2.0f),
+                    ("CRAZY!", 5.0f)
+                };
 
-                if (isRainbowEnabled)
+                foreach (var (label, speed) in speedButtons)
                 {
-                    // Rainbow speed presets like AppearanceSection
-                    var speedContainer = new VisualElement();
-                    speedContainer.style.flexDirection = FlexDirection.Row;
-                    speedContainer.style.marginTop = 10;
-
-                    var speedButtons = new[]
+                    var speedButton = CreateButton(label, () => 
                     {
-                        ("Slow", 0.5f),
-                        ("Normal", 1.0f),
-                        ("Fast", 2.0f),
-                        ("CRAZY!", 5.0f)
-                    };
-
-                    foreach (var (label, speed) in speedButtons)
-                    {
-                        var speedButton = CreateButton(label, () => 
-                        {
-                            // Use existing customize command instead of duplicating logic
-                            ExecuteMenuCommand($"customize rainbow speed {speed}");
-                            AddToConsole($"Rainbow speed: {label}");
-                        });
-                        speedButton.style.marginRight = 5;
-                        speedContainer.Add(speedButton);
-                    }
-
-                    section.Add(speedContainer);
+                        ExecuteMenuCommand($"customize rainbow speed {speed}");
+                        AddToConsole($"Rainbow speed: {label}");
+                    });
+                    speedButton.style.marginRight = 5;
+                    speedButton.style.width = 70;
+                    _rainbowSpeedContainer.Add(speedButton);
                 }
+
+                section.Add(_rainbowSpeedContainer);
+                
+                // Register reactive visibility update
+                _liveUpdateCallbacks.Add(() => {
+                    if (_rainbowSpeedContainer != null && _rainbowManager != null)
+                    {
+                        var shouldShow = _rainbowManager.IsRainbowEnabled;
+                        _rainbowSpeedContainer.style.display = shouldShow ? DisplayStyle.Flex : DisplayStyle.None;
+                    }
+                });
             }
 
             _scrollView.Add(section);
@@ -183,41 +194,33 @@ namespace PEAK_Menu.Utils.DebugPages
 
             if (_playerManager != null)
             {
-                CreateSlider("Speed Multiplier", 
-                    Plugin.PluginConfig.MovementSpeedMultiplier.Value, 
-                    0.1f, 20f, 
-                    (value) => 
-                    {
+                // Live reactive sliders that sync with config values
+                CreateLiveSlider("Speed Multiplier", 
+                    () => Plugin.PluginConfig.MovementSpeedMultiplier.Value,
+                    (value) => {
                         Plugin.PluginConfig.MovementSpeedMultiplier.Value = value;
                         _playerManager.SetMovementSpeedMultiplier(value);
                         AddToConsole($"Movement speed: {value:F2}x");
-                    });
+                    }, 0.1f, 20f, section);
 
-                CreateSlider("Jump Multiplier", 
-                    Plugin.PluginConfig.JumpHeightMultiplier.Value, 
-                    0.1f, 10f, 
-                    (value) => 
-                    {
+                CreateLiveSlider("Jump Multiplier", 
+                    () => Plugin.PluginConfig.JumpHeightMultiplier.Value,
+                    (value) => {
                         Plugin.PluginConfig.JumpHeightMultiplier.Value = value;
                         _playerManager.SetJumpHeightMultiplier(value);
                         AddToConsole($"Jump height: {value:F2}x");
-                    });
+                    }, 0.1f, 10f, section);
 
-                CreateSlider("Climb Multiplier", 
-                    Plugin.PluginConfig.ClimbSpeedMultiplier.Value, 
-                    0.1f, 20f, 
-                    (value) => 
-                    {
+                CreateLiveSlider("Climb Multiplier", 
+                    () => Plugin.PluginConfig.ClimbSpeedMultiplier.Value,
+                    (value) => {
                         Plugin.PluginConfig.ClimbSpeedMultiplier.Value = value;
                         _playerManager.SetClimbSpeedMultiplier(value);
                         AddToConsole($"Climb speed: {value:F2}x");
-                    });
+                    }, 0.1f, 20f, section);
 
                 // Movement presets
-                var presetsContainer = new VisualElement();
-                presetsContainer.style.flexDirection = FlexDirection.Row;
-                presetsContainer.style.marginTop = 10;
-
+                var presetsContainer = CreateRowContainer();
                 var presets = new[]
                 {
                     ("Normal", 1.0f, 1.0f, 1.0f),
@@ -239,9 +242,9 @@ namespace PEAK_Menu.Utils.DebugPages
                         _playerManager.SetClimbSpeedMultiplier(climb);
 
                         AddToConsole($"Movement preset: {name}");
-                        RefreshPlayerInfo();
                     });
                     presetButton.style.marginRight = 5;
+                    presetButton.style.width = 80;
                     presetsContainer.Add(presetButton);
                 }
 
@@ -255,28 +258,24 @@ namespace PEAK_Menu.Utils.DebugPages
         {
             var section = CreateSection("Protection Settings");
 
-            section.Add(CreateToggle("No Fall Damage", 
-                Plugin.PluginConfig.NoFallDamage.Value,
-                (enabled) =>
-                {
+            section.Add(CreateLiveToggle("No Fall Damage", 
+                () => Plugin.PluginConfig.NoFallDamage.Value,
+                (enabled) => {
                     Plugin.PluginConfig.NoFallDamage.Value = enabled;
                     _playerManager?.SetNoFallDamage(enabled);
                     AddToConsole($"No fall damage {(enabled ? "enabled" : "disabled")}");
                 }));
 
-            section.Add(CreateToggle("No Weight Penalties", 
-                Plugin.PluginConfig.NoWeight.Value,
-                (enabled) =>
-                {
-                    // Use existing no-weight command instead of duplicating logic
+            section.Add(CreateLiveToggle("No Weight Penalties", 
+                () => Plugin.PluginConfig.NoWeight.Value,
+                (enabled) => {
                     ExecuteMenuCommand($"no-weight {(enabled ? "on" : "off")}");
                     AddToConsole($"No weight penalties {(enabled ? "enabled" : "disabled")}");
                 }));
 
-            section.Add(CreateToggle("Affliction Immunity", 
-                Plugin.PluginConfig.AfflictionImmunity.Value,
-                (enabled) =>
-                {
+            section.Add(CreateLiveToggle("Affliction Immunity", 
+                () => Plugin.PluginConfig.AfflictionImmunity.Value,
+                (enabled) => {
                     Plugin.PluginConfig.AfflictionImmunity.Value = enabled;
                     _playerManager?.SetAfflictionImmunity(enabled);
                     AddToConsole($"Affliction immunity {(enabled ? "enabled" : "disabled")}");
@@ -291,64 +290,67 @@ namespace PEAK_Menu.Utils.DebugPages
 
             if (_noClipManager != null)
             {
-                var isEnabled = _noClipManager.IsNoClipEnabled;
+                section.Add(CreateLiveToggle("NoClip Mode", 
+                    () => _noClipManager.IsNoClipEnabled,
+                    (enabled) => {
+                        _noClipManager.ToggleNoClip();
+                        AddToConsole($"NoClip {(_noClipManager.IsNoClipEnabled ? "enabled" : "disabled")}");
+                    }));
 
-                section.Add(CreateToggle("NoClip Mode", isEnabled, (enabled) =>
-                {
-                    // Use existing admin command instead of duplicating logic
-                    ExecuteMenuCommand($"admin noclip {(enabled ? "on" : "off")}");
-                    AddToConsole($"NoClip {(enabled ? "enabled" : "disabled")}");
-                    RefreshPlayerInfo();
-                }));
+                // NoClip controls that show/hide reactively
+                _noClipControls = new VisualElement();
+                
+                _noClipControls.Add(CreateLabel($"Hotkey: {Plugin.PluginConfig.NoClipToggleKey.Value}"));
+                _noClipControls.Add(CreateLabel("Controls: WASD + Space/Ctrl + Shift"));
 
-                if (isEnabled)
-                {
-                    section.Add(CreateLabel($"Hotkey: {Plugin.PluginConfig.NoClipToggleKey.Value}"));
-                    section.Add(CreateLabel("Controls: WASD + Space/Ctrl + Shift"));
-
-                    CreateSlider("Base Force", _noClipManager.VerticalForce, 200f, 2000f, (value) =>
-                    {
-                        // Use existing admin command instead of duplicating logic
-                        ExecuteMenuCommand($"admin noclip speed {value}");
+                CreateLiveSlider("Base Force", 
+                    () => _noClipManager.VerticalForce,
+                    (value) => {
+                        _noClipManager.SetVerticalForce(value);
                         AddToConsole($"NoClip base force: {value:F0}");
-                    });
+                    }, 200f, 2000f, _noClipControls);
 
-                    CreateSlider("Sprint Multiplier", _noClipManager.SprintMultiplier, 1f, 10f, (value) =>
-                    {
-                        // Use existing admin command instead of duplicating logic
-                        ExecuteMenuCommand($"admin noclip fast {value}");
+                CreateLiveSlider("Sprint Multiplier", 
+                    () => _noClipManager.SprintMultiplier,
+                    (value) => {
+                        _noClipManager.SetSprintMultiplier(value);
                         AddToConsole($"NoClip sprint multiplier: {value:F1}x");
+                    }, 1f, 10f, _noClipControls);
+
+                // NoClip presets
+                var presetsContainer = CreateRowContainer();
+                var presets = new[]
+                {
+                    ("Slow", 400f, 2f),
+                    ("Normal", 800f, 4f),
+                    ("Fast", 1200f, 6f),
+                    ("Turbo", 1600f, 8f)
+                };
+
+                foreach (var (name, force, sprint) in presets)
+                {
+                    var presetButton = CreateButton(name, () => 
+                    {
+                        _noClipManager.SetVerticalForce(force);
+                        _noClipManager.SetSprintMultiplier(sprint);
+                        AddToConsole($"NoClip preset: {name}");
                     });
-
-                    // NoClip presets
-                    var presetsContainer = new VisualElement();
-                    presetsContainer.style.flexDirection = FlexDirection.Row;
-                    presetsContainer.style.marginTop = 10;
-
-                    var presets = new[]
-                    {
-                        ("Slow", 400f, 2f),
-                        ("Normal", 800f, 4f),
-                        ("Fast", 1200f, 6f),
-                        ("Turbo", 1600f, 8f)
-                    };
-
-                    foreach (var (name, force, sprint) in presets)
-                    {
-                        var presetButton = CreateButton(name, () => 
-                        {
-                            // Use existing admin commands instead of duplicating logic
-                            ExecuteMenuCommand($"admin noclip speed {force}");
-                            ExecuteMenuCommand($"admin noclip fast {sprint}");
-                            AddToConsole($"NoClip preset: {name}");
-                            RefreshPlayerInfo();
-                        });
-                        presetButton.style.marginRight = 5;
-                        presetsContainer.Add(presetButton);
-                    }
-
-                    section.Add(presetsContainer);
+                    presetButton.style.marginRight = 5;
+                    presetButton.style.width = 70;
+                    presetsContainer.Add(presetButton);
                 }
+
+                _noClipControls.Add(presetsContainer);
+                section.Add(_noClipControls);
+                
+                // Register reactive visibility update
+                _liveUpdateCallbacks.Add(() => {
+                    if (_noClipControls != null && _noClipManager != null)
+                    {
+                        var shouldShow = _noClipManager.IsNoClipEnabled;
+                        _noClipControls.style.display = shouldShow ? DisplayStyle.Flex : DisplayStyle.None;
+                    }
+                });
             }
 
             _scrollView.Add(section);
@@ -361,11 +363,6 @@ namespace PEAK_Menu.Utils.DebugPages
             {
                 menuManager.ExecuteCommand(command);
             }
-        }
-
-        public override void Update()
-        {
-            // Optionally refresh info periodically or on specific events
         }
 
         public override VisualElement FocusOnDefault()

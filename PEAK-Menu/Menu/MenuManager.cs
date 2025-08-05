@@ -70,9 +70,10 @@ namespace PEAK_Menu.Menu
                     }
                 }
 
-                // Update effects
+                // Update managers
                 _rainbowManager?.Update();
                 _noClipManager?.Update();
+                _debugConsoleManager?.Update(); // Add this line for auto-refresh
             }
             catch (System.Exception ex)
             {

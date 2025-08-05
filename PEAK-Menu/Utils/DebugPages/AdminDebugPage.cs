@@ -8,10 +8,7 @@ namespace PEAK_Menu.Utils.DebugPages
 {
     public class AdminDebugPage : BaseCustomDebugPage
     {
-        private DropdownField _playerDropdown;
-        private DropdownField _itemDropdown;
         private FloatField _teleportX, _teleportY, _teleportZ;
-        private Character[] _allPlayers;
 
         protected override void BuildContent()
         {
@@ -26,49 +23,89 @@ namespace PEAK_Menu.Utils.DebugPages
         {
             var section = CreateSection("Teleport Controls");
 
-            // Coordinate input fields
-            var coordContainer = new VisualElement();
-            coordContainer.style.flexDirection = FlexDirection.Row;
-            coordContainer.style.marginBottom = 10;
+            // Live coordinate display
+            section.Add(CreateLiveLabel("Current Position: ", () => {
+                var character = Character.localCharacter;
+                return character?.Center.ToString("F1") ?? "N/A";
+            }));
 
-            _teleportX = new FloatField("X:") { value = 0f };
+            // Coordinate input fields in a row
+            var coordContainer = CreateRowContainer();
+            
+            var xContainer = new VisualElement();
+            xContainer.style.flexDirection = FlexDirection.Row;
+            xContainer.style.alignItems = Align.Center;
+            xContainer.style.marginRight = 10;
+            var xLabel = CreateLabel("X:");
+            xLabel.style.width = 20;
+            xLabel.style.marginRight = 5;
+            _teleportX = new FloatField() { value = 0f };
             _teleportX.style.width = 80;
-            _teleportX.style.marginRight = 5;
+            _teleportX.style.color = Color.white;
+            _teleportX.style.backgroundColor = new Color(0.2f, 0.2f, 0.2f, 0.8f);
+            xContainer.Add(xLabel);
+            xContainer.Add(_teleportX);
 
-            _teleportY = new FloatField("Y:") { value = 0f };
+            var yContainer = new VisualElement();
+            yContainer.style.flexDirection = FlexDirection.Row;
+            yContainer.style.alignItems = Align.Center;
+            yContainer.style.marginRight = 10;
+            var yLabel = CreateLabel("Y:");
+            yLabel.style.width = 20;
+            yLabel.style.marginRight = 5;
+            _teleportY = new FloatField() { value = 0f };
             _teleportY.style.width = 80;
-            _teleportY.style.marginRight = 5;
+            _teleportY.style.color = Color.white;
+            _teleportY.style.backgroundColor = new Color(0.2f, 0.2f, 0.2f, 0.8f);
+            yContainer.Add(yLabel);
+            yContainer.Add(_teleportY);
 
-            _teleportZ = new FloatField("Z:") { value = 0f };
+            var zContainer = new VisualElement();
+            zContainer.style.flexDirection = FlexDirection.Row;
+            zContainer.style.alignItems = Align.Center;
+            var zLabel = CreateLabel("Z:");
+            zLabel.style.width = 20;
+            zLabel.style.marginRight = 5;
+            _teleportZ = new FloatField() { value = 0f };
             _teleportZ.style.width = 80;
+            _teleportZ.style.color = Color.white;
+            _teleportZ.style.backgroundColor = new Color(0.2f, 0.2f, 0.2f, 0.8f);
+            zContainer.Add(zLabel);
+            zContainer.Add(_teleportZ);
 
-            coordContainer.Add(_teleportX);
-            coordContainer.Add(_teleportY);
-            coordContainer.Add(_teleportZ);
-
+            coordContainer.Add(xContainer);
+            coordContainer.Add(yContainer);
+            coordContainer.Add(zContainer);
             section.Add(coordContainer);
 
             // Teleport buttons
-            var buttonContainer = new VisualElement();
-            buttonContainer.style.flexDirection = FlexDirection.Row;
+            var buttonContainer = CreateRowContainer();
 
-            buttonContainer.Add(CreateButton("Teleport to Coords", () =>
+            var teleportButton = CreateButton("Teleport to Coords", () =>
             {
                 AdminUIHelper.TeleportToCoordinates(_teleportX.value, _teleportY.value, _teleportZ.value);
                 AddToConsole($"[ADMIN] Teleported to coordinates: {_teleportX.value:F1}, {_teleportY.value:F1}, {_teleportZ.value:F1}");
-            }));
+            });
+            teleportButton.style.width = 150;
 
-            buttonContainer.Add(CreateButton("Get Current Position", () =>
+            var getCurrentPosButton = CreateButton("Get Current Position", () =>
             {
                 var localCharacter = Character.localCharacter;
-                var pos = localCharacter.Center;
-                _teleportX.value = pos.x;
-                _teleportY.value = pos.y;
-                _teleportZ.value = pos.z;
-                AddToConsole($"[ADMIN] Current position: {pos.x:F1}, {pos.y:F1}, {pos.z:F1}");
-            }));
+                if (localCharacter != null)
+                {
+                    var pos = localCharacter.Center;
+                    _teleportX.value = pos.x;
+                    _teleportY.value = pos.y;
+                    _teleportZ.value = pos.z;
+                    AddToConsole($"[ADMIN] Current position: {pos.x:F1}, {pos.y:F1}, {pos.z:F1}");
+                }
+            });
+            getCurrentPosButton.style.width = 150;
 
+            buttonContainer.Add(teleportButton);
+            buttonContainer.Add(getCurrentPosButton);
             section.Add(buttonContainer);
+            
             _scrollView.Add(section);
         }
 
@@ -76,33 +113,45 @@ namespace PEAK_Menu.Utils.DebugPages
         {
             var section = CreateSection("Player Management");
 
-            // Player dropdown
-            RefreshPlayerList();
-            if (_allPlayers.Length > 0)
+            // Live player count
+            section.Add(CreateLiveLabel("Players Online: ", () => {
+                var playerCount = Character.AllCharacters?.Count() ?? 0;
+                return playerCount.ToString();
+            }));
+
+            // Live reactive player dropdown
+            var playerDropdown = CreateLiveDropdown("Select Player:", () => {
+                var players = Character.AllCharacters?.ToArray() ?? new Character[0];
+                return players.Select(p => $"{p.characterName} {(p.data.dead ? "[DEAD]" : p.data.passedOut ? "[OUT]" : "[OK]")}").ToList();
+            }, 0, (selectedPlayerName) => {
+                // Player selection changed - could add logic here if needed
+            });
+
+            // Player action buttons
+            var actionContainer = CreateRowContainer();
+
+            var actions = new[] { "Heal", "Kill", "Revive", "Goto", "Bring" };
+            foreach (var action in actions)
             {
-                var playerNames = _allPlayers.Select(p => p.characterName).ToList();
-                _playerDropdown = new DropdownField("Select Player:", playerNames, 0);
-                section.Add(_playerDropdown);
-
-                // Player action buttons
-                var actionContainer = new VisualElement();
-                actionContainer.style.flexDirection = FlexDirection.Row;
-                actionContainer.style.marginTop = 10;
-
-                actionContainer.Add(CreateButton("Heal", () => ExecutePlayerAction("heal")));
-                actionContainer.Add(CreateButton("Kill", () => ExecutePlayerAction("kill")));
-                actionContainer.Add(CreateButton("Revive", () => ExecutePlayerAction("revive")));
-                actionContainer.Add(CreateButton("Goto", () => ExecutePlayerAction("goto")));
-                actionContainer.Add(CreateButton("Bring", () => ExecutePlayerAction("bring")));
-
-                section.Add(actionContainer);
-            }
-            else
-            {
-                section.Add(CreateLabel("No players found"));
+                var button = CreateButton(action, () => {
+                    var players = Character.AllCharacters?.ToArray() ?? new Character[0];
+                    if (playerDropdown.index >= 0 && playerDropdown.index < players.Length)
+                    {
+                        var selectedPlayer = players[playerDropdown.index];
+                        AdminUIHelper.ExecuteQuickAction(action.ToLower(), selectedPlayer.characterName);
+                        AddToConsole($"[ADMIN] {action} action for {selectedPlayer.characterName}");
+                    }
+                    else
+                    {
+                        AddToConsole("No player selected or invalid selection");
+                    }
+                });
+                button.style.width = 70;
+                button.style.marginRight = 5;
+                actionContainer.Add(button);
             }
 
-            section.Add(CreateButton("Refresh Player List", RefreshPlayerList));
+            section.Add(actionContainer);
             _scrollView.Add(section);
         }
 
@@ -110,35 +159,64 @@ namespace PEAK_Menu.Utils.DebugPages
         {
             var section = CreateSection("Item Management");
 
-            // Item dropdown
-            var itemHelper = ItemDiscoveryHelper.Instance;
-            var allItemNames = itemHelper.GetItemNamesArray();
+            // Live item count
+            section.Add(CreateLiveLabel("Items Available: ", () => {
+                var itemHelper = ItemDiscoveryHelper.Instance;
+                var itemCount = itemHelper.GetItemNamesArray().Length - 1; // Subtract "Select Item..."
+                return itemCount.ToString();
+            }));
 
-            if (allItemNames.Length > 1) // More than just "Select Item..."
-            {
-                _itemDropdown = new DropdownField("Select Item:", allItemNames.ToList(), 0);
-                section.Add(_itemDropdown);
+            // Live reactive item dropdown
+            var itemDropdown = CreateLiveDropdown("Select Item:", () => {
+                var itemHelper = ItemDiscoveryHelper.Instance;
+                return itemHelper.GetItemNamesArray().ToList();
+            }, 0, (selectedItemName) => {
+                // Item selection changed - could add logic here if needed
+            });
 
-                // Item action buttons
-                var itemActionContainer = new VisualElement();
-                itemActionContainer.style.flexDirection = FlexDirection.Row;
-                itemActionContainer.style.marginTop = 10;
+            // Item action buttons
+            var itemActionContainer = CreateRowContainer();
 
-                itemActionContainer.Add(CreateButton("Give Item", () => GiveItemToSelectedPlayer()));
-                itemActionContainer.Add(CreateButton("Drop Item", () => DropItemNearSelectedPlayer()));
-
-                section.Add(itemActionContainer);
-            }
-            else
-            {
-                section.Add(CreateLabel("No items discovered yet"));
-                section.Add(CreateButton("Refresh Items", () =>
+            var giveButton = CreateButton("Give Item", () => {
+                var players = Character.AllCharacters?.ToArray() ?? new Character[0];
+                var playerDropdown = section.Q<DropdownField>("player-dropdown");
+                
+                if (playerDropdown != null && itemDropdown.index > 0 && 
+                    playerDropdown.index >= 0 && playerDropdown.index < players.Length)
                 {
-                    itemHelper.RefreshItems();
-                    AddToConsole("Item list refreshed");
-                    BuildContent();
-                }));
-            }
+                    var selectedPlayer = players[playerDropdown.index];
+                    var itemName = itemDropdown.value;
+                    GiveItemToPlayer(selectedPlayer, itemName, 1);
+                }
+                else
+                {
+                    AddToConsole("Please select both a player and an item");
+                }
+            });
+            giveButton.style.width = 100;
+            giveButton.style.marginRight = 5;
+
+            var dropButton = CreateButton("Drop Item", () => {
+                var players = Character.AllCharacters?.ToArray() ?? new Character[0];
+                var playerDropdown = section.Q<DropdownField>("player-dropdown");
+                
+                if (playerDropdown != null && itemDropdown.index > 0 && 
+                    playerDropdown.index >= 0 && playerDropdown.index < players.Length)
+                {
+                    var selectedPlayer = players[playerDropdown.index];
+                    var itemName = itemDropdown.value;
+                    DropItemNearPlayer(selectedPlayer, itemName, 1);
+                }
+                else
+                {
+                    AddToConsole("Please select both a player and an item");
+                }
+            });
+            dropButton.style.width = 100;
+
+            itemActionContainer.Add(giveButton);
+            itemActionContainer.Add(dropButton);
+            section.Add(itemActionContainer);
 
             _scrollView.Add(section);
         }
@@ -150,13 +228,13 @@ namespace PEAK_Menu.Utils.DebugPages
             var debugConsoleManager = Plugin.Instance?._menuManager?.GetDebugConsoleManager();
             if (debugConsoleManager != null)
             {
-                var isOpen = debugConsoleManager.IsDebugConsoleOpen;
-
-                section.Add(CreateToggle("Debug Console Open", isOpen, (enabled) =>
-                {
-                    debugConsoleManager.ToggleDebugConsole();
-                    AddToConsole($"Debug console {(debugConsoleManager.IsDebugConsoleOpen ? "opened" : "closed")}");
-                }));
+                // Live reactive toggle for debug console state
+                section.Add(CreateLiveToggle("Debug Console Open", 
+                    () => debugConsoleManager.IsDebugConsoleOpen,
+                    (enabled) => {
+                        debugConsoleManager.ToggleDebugConsole();
+                        AddToConsole($"Debug console {(debugConsoleManager.IsDebugConsoleOpen ? "opened" : "closed")}");
+                    }));
 
                 section.Add(CreateLabel($"Hotkey: {Plugin.PluginConfig.DebugConsoleToggleKey.Value}"));
                 section.Add(CreateLabel("Access full game console with command history & autocomplete"));
@@ -169,82 +247,30 @@ namespace PEAK_Menu.Utils.DebugPages
         {
             var section = CreateSection("Emergency Actions");
 
-            section.Add(CreateButton("Emergency Heal All", () =>
+            var buttonContainer = CreateRowContainer();
+
+            var healAllButton = CreateButton("Emergency Heal All", () =>
             {
                 AdminUIHelper.ExecuteQuickAction("heal-all");
                 AddToConsole("[ADMIN] Emergency heal all executed");
-            }));
+            });
+            healAllButton.style.width = 150;
 
-            section.Add(CreateButton("List All Players", () =>
+            var listPlayersButton = CreateButton("List All Players", () =>
             {
                 AdminUIHelper.ExecuteQuickAction("list-all");
                 AddToConsole("[ADMIN] Listed all players");
-            }));
+            });
+            listPlayersButton.style.width = 150;
+
+            buttonContainer.Add(healAllButton);
+            buttonContainer.Add(listPlayersButton);
+            section.Add(buttonContainer);
 
             _scrollView.Add(section);
         }
 
-        private void RefreshPlayerList()
-        {
-            _allPlayers = Character.AllCharacters?.ToArray() ?? new Character[0];
-
-            if (_playerDropdown != null && _allPlayers.Length > 0)
-            {
-                _playerDropdown.choices = _allPlayers.Select(p => p.characterName).ToList();
-            }
-        }
-
-        private void ExecutePlayerAction(string action)
-        {
-            if (_playerDropdown != null && _allPlayers != null && _playerDropdown.index >= 0 && _playerDropdown.index < _allPlayers.Length)
-            {
-                var selectedPlayer = _allPlayers[_playerDropdown.index];
-                AdminUIHelper.ExecuteQuickAction(action, selectedPlayer.characterName);
-                AddToConsole($"[ADMIN] {action} action for {selectedPlayer.characterName}");
-            }
-            else
-            {
-                AddToConsole("No player selected or invalid selection");
-            }
-        }
-
-        private void GiveItemToSelectedPlayer()
-        {
-            if (_playerDropdown != null && _itemDropdown != null && _allPlayers != null &&
-                _playerDropdown.index >= 0 && _playerDropdown.index < _allPlayers.Length &&
-                _itemDropdown.index > 0) // Skip "Select Item..."
-            {
-                var selectedPlayer = _allPlayers[_playerDropdown.index];
-                var itemName = _itemDropdown.value;
-
-                // Use the EXACT same logic as AdminTab.GiveItemToPlayer
-                GiveItemToPlayer(selectedPlayer, itemName, 1);
-            }
-            else
-            {
-                AddToConsole("Please select both a player and an item");
-            }
-        }
-
-        private void DropItemNearSelectedPlayer()
-        {
-            if (_playerDropdown != null && _itemDropdown != null && _allPlayers != null &&
-                _playerDropdown.index >= 0 && _playerDropdown.index < _allPlayers.Length &&
-                _itemDropdown.index > 0) // Skip "Select Item..."
-            {
-                var selectedPlayer = _allPlayers[_playerDropdown.index];
-                var itemName = _itemDropdown.value;
-
-                // Use the EXACT same logic as AdminTab.DropItemNearPlayer
-                DropItemNearPlayer(selectedPlayer, itemName, 1);
-            }
-            else
-            {
-                AddToConsole("Please select both a player and an item");
-            }
-        }
-
-        // COPIED DIRECTLY FROM AdminTab.cs - EXACT SAME IMPLEMENTATION
+        // Keep the existing item methods from AdminTab
         private void GiveItemToPlayer(Character targetPlayer, string itemName, int quantity)
         {
             if (targetPlayer == null || string.IsNullOrEmpty(itemName))
@@ -255,7 +281,6 @@ namespace PEAK_Menu.Utils.DebugPages
 
             try
             {
-                // Find the item prefab by name
                 var itemHelper = ItemDiscoveryHelper.Instance;
                 var itemPrefab = itemHelper.FindItemByName(itemName);
                 
@@ -288,7 +313,6 @@ namespace PEAK_Menu.Utils.DebugPages
             }
         }
 
-        // COPIED DIRECTLY FROM AdminTab.cs - EXACT SAME IMPLEMENTATION
         private void DropItemNearPlayer(Character targetPlayer, string itemName, int quantity)
         {
             if (targetPlayer == null || string.IsNullOrEmpty(itemName))
@@ -299,7 +323,6 @@ namespace PEAK_Menu.Utils.DebugPages
 
             try
             {
-                // Find the item prefab by name
                 var itemHelper = ItemDiscoveryHelper.Instance;
                 var itemPrefab = itemHelper.FindItemByName(itemName);
                 
@@ -309,9 +332,7 @@ namespace PEAK_Menu.Utils.DebugPages
                     return;
                 }
 
-                // Always spawn items at player's feet regardless of local/remote
                 SpawnItemsNearPlayer(targetPlayer, itemPrefab, quantity);
-
                 AddToConsole($"[ADMIN] Dropped {quantity}x {itemName} near {targetPlayer.characterName}");
             }
             catch (System.Exception ex)
@@ -320,7 +341,6 @@ namespace PEAK_Menu.Utils.DebugPages
             }
         }
 
-        // COPIED DIRECTLY FROM AdminTab.cs - EXACT SAME IMPLEMENTATION
         private void SpawnItemsNearPlayer(Character targetPlayer, Item itemPrefab, int quantity)
         {
             if (!Photon.Pun.PhotonNetwork.IsMasterClient)
@@ -333,7 +353,6 @@ namespace PEAK_Menu.Utils.DebugPages
             {
                 for (int i = 0; i < quantity; i++)
                 {
-                    // Calculate spawn position near the player
                     Vector3 basePosition = targetPlayer.Center;
                     Vector3 randomOffset = new Vector3(
                         Random.Range(-2f, 2f),
@@ -342,7 +361,6 @@ namespace PEAK_Menu.Utils.DebugPages
                     );
                     Vector3 spawnPosition = basePosition + randomOffset;
                     
-                    // Spawn the item using PhotonNetwork
                     var spawnedObject = Photon.Pun.PhotonNetwork.Instantiate(
                         "0_Items/" + itemPrefab.gameObject.name, 
                         spawnPosition, 
@@ -354,7 +372,6 @@ namespace PEAK_Menu.Utils.DebugPages
                         var spawnedItem = spawnedObject.GetComponent<Item>();
                         if (spawnedItem != null)
                         {
-                            // Set the item to non-kinematic so it falls naturally
                             spawnedItem.SetKinematicNetworked(false, spawnPosition, Quaternion.identity);
                         }
                     }
@@ -366,29 +383,6 @@ namespace PEAK_Menu.Utils.DebugPages
             catch (System.Exception ex)
             {
                 AddToConsole($"[ERROR] Failed to spawn item near player: {ex.Message}");
-                
-                // Fallback: Try using CharacterItems.SpawnItemInHand via reflection
-                try
-                {
-                    if (targetPlayer.refs?.items != null)
-                    {
-                        if (targetPlayer.photonView != null)
-                        {
-                            for (int i = 0; i < quantity; i++)
-                            {
-                                targetPlayer.photonView.RPC("RPC_SpawnItemInHandMaster", Photon.Pun.RpcTarget.All, itemPrefab.gameObject.name);
-                            }
-                        }
-                        else
-                        {
-                            AddToConsole("[ERROR] SpawnItemInHand method not found");
-                        }
-                    }
-                }
-                catch (System.Exception fallbackEx)
-                {
-                    AddToConsole($"[ERROR] Fallback method also failed: {fallbackEx.Message}");
-                }
             }
         }
 

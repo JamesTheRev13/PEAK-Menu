@@ -1,7 +1,9 @@
+using PEAK_Menu.Utils.DebugPages;
 using UnityEngine;
 using Zorro.Core.CLI;
-
-// Manager for handling the built-in debug console in PEAK Menu
+using System.Reflection;
+using Zorro.Core;
+using UnityEngine.UIElements;
 
 namespace PEAK_Menu.Utils
 {
@@ -9,6 +11,23 @@ namespace PEAK_Menu.Utils
     {
         private bool _allowOpenOriginal;
         private bool _wasInitialized = false;
+        
+        // Reflection field for accessing private m_currentPage
+        private static FieldInfo _currentPageField;
+
+        static DebugConsoleManager()
+        {
+            try
+            {
+                // Get the private m_currentPage field via reflection
+                _currentPageField = typeof(DebugUIHandler).GetField("m_currentPage", 
+                    BindingFlags.NonPublic | BindingFlags.Instance);
+            }
+            catch (System.Exception ex)
+            {
+                Plugin.Log?.LogWarning($"Could not find m_currentPage field: {ex.Message}");
+            }
+        }
 
         public bool IsDebugConsoleOpen => DebugUIHandler.IsOpen;
         public bool IsDebugConsoleAllowed => DebugUIHandler.AllowOpen;
@@ -24,16 +43,54 @@ namespace PEAK_Menu.Utils
                     return;
                 }
 
-                // Register our custom debug pages
-                debugHandler.RegisterPage("PEAK Player", () => new DebugPages.PlayerDebugPage());
-                debugHandler.RegisterPage("PEAK Admin", () => new DebugPages.AdminDebugPage());
-                debugHandler.RegisterPage("PEAK Environment", () => new DebugPages.EnvironmentDebugPage());
+                // Register our custom debug pages with style inheritance
+                debugHandler.RegisterPage("PEAK Player", () => 
+                {
+                    var page = new DebugPages.PlayerDebugPage();
+                    ApplyDebugConsoleStyles(page);
+                    return page;
+                });
+                
+                debugHandler.RegisterPage("PEAK Admin", () => 
+                {
+                    var page = new DebugPages.AdminDebugPage();
+                    ApplyDebugConsoleStyles(page);
+                    return page;
+                });
+                
+                debugHandler.RegisterPage("PEAK Environment", () => 
+                {
+                    var page = new DebugPages.EnvironmentDebugPage();
+                    ApplyDebugConsoleStyles(page);
+                    return page;
+                });
 
                 Plugin.Log.LogInfo("Custom debug pages registered successfully");
             }
             catch (System.Exception ex)
             {
                 Plugin.Log.LogError($"Error registering custom debug pages: {ex.Message}");
+            }
+        }
+
+        private void ApplyDebugConsoleStyles(VisualElement page)
+        {
+            try
+            {
+                // Try to apply the same style sheets that the debug console uses
+                var debugHandler = DebugUIHandler.Instance;
+                if (debugHandler != null)
+                {
+                    var styleSheets = SingletonAsset<CoreGlobalDependencies>.Instance?.DebugPageStyleSheets;
+                    if (styleSheets != null)
+                    {
+                        page.styleSheets.Add(styleSheets);
+                    }
+                }
+            }
+            catch (System.Exception ex)
+            {
+                Plugin.Log?.LogWarning($"Could not apply debug console styles: {ex.Message}");
             }
         }
 
@@ -56,6 +113,37 @@ namespace PEAK_Menu.Utils
             catch (System.Exception ex)
             {
                 Plugin.Log.LogError($"Failed to initialize Debug Console Manager: {ex.Message}");
+            }
+        }
+
+        public void Update()
+        {
+            // Update custom debug pages if the console is open
+            if (DebugUIHandler.IsOpen)
+            {
+                try
+                {
+                    var debugHandler = DebugUIHandler.Instance;
+                    if (debugHandler != null && _currentPageField != null)
+                    {
+                        // Use reflection to get the current page
+                        var currentPage = _currentPageField.GetValue(debugHandler);
+                        
+                        // Check if it's one of our custom debug pages
+                        if (currentPage is DebugPages.BaseCustomDebugPage customPage)
+                        {
+                            customPage.UpdateContent();
+                        }
+                    }
+                }
+                catch (System.Exception ex)
+                {
+                    // Silently handle errors to avoid spam, but log in debug mode
+                    if (Plugin.PluginConfig?.EnableDebugMode?.Value == true)
+                    {
+                        Plugin.Log?.LogWarning($"Error updating debug page: {ex.Message}");
+                    }
+                }
             }
         }
 
@@ -158,11 +246,35 @@ namespace PEAK_Menu.Utils
         {
             try
             {
+                var currentPageInfo = "Unknown";
+                
+                if (_currentPageField != null)
+                {
+                    var debugHandler = DebugUIHandler.Instance;
+                    if (debugHandler != null)
+                    {
+                        var currentPage = _currentPageField.GetValue(debugHandler);
+                        if (currentPage != null)
+                        {
+                            currentPageInfo = currentPage.GetType().Name;
+                            if (currentPage is DebugPages.BaseCustomDebugPage)
+                            {
+                                currentPageInfo += " (PEAK Custom)";
+                            }
+                        }
+                        else
+                        {
+                            currentPageInfo = "None";
+                        }
+                    }
+                }
+
                 return $"Debug Console Status:\n" +
                        $"  Available: {(DebugUIHandler.Instance != null ? "Yes" : "No")}\n" +
                        $"  Allowed: {DebugUIHandler.AllowOpen}\n" +
                        $"  Open: {DebugUIHandler.IsOpen}\n" +
-                       $"  Paused: {(DebugUIHandler.Instance?.Paused ?? false)}";
+                       $"  Paused: {(DebugUIHandler.Instance?.Paused ?? false)}\n" +
+                       $"  Current Page: {currentPageInfo}";
             }
             catch (System.Exception ex)
             {
