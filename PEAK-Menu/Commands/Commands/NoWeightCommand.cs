@@ -26,7 +26,7 @@ This is implemented via Harmony patches for maximum compatibility.";
 
         public override void Execute(string[] parameters)
         {
-            var playerManager = Plugin.Instance?._menuManager?.GetPlayerManager();
+            var playerManager = Plugin.Instance?._debugConsoleManager?.GetPlayerManager();
             if (playerManager == null)
             {
                 LogError("Player manager not available");

@@ -1,9 +1,8 @@
 using PEAK_Menu.Utils.DebugPages;
+using PEAK_Menu.Utils.CLI;
 using UnityEngine;
 using Zorro.Core.CLI;
 using System.Reflection;
-using Zorro.Core;
-using UnityEngine.UIElements;
 
 namespace PEAK_Menu.Utils
 {
@@ -11,15 +10,17 @@ namespace PEAK_Menu.Utils
     {
         private bool _allowOpenOriginal;
         private bool _wasInitialized = false;
-        
-        // Reflection field for accessing private m_currentPage
         private static FieldInfo _currentPageField;
+
+        // Managers owned by debug console system
+        private RainbowManager _rainbowManager;
+        private NoClipManager _noClipManager;
+        private PlayerManager _playerManager;
 
         static DebugConsoleManager()
         {
             try
             {
-                // Get the private m_currentPage field via reflection
                 _currentPageField = typeof(DebugUIHandler).GetField("m_currentPage", 
                     BindingFlags.NonPublic | BindingFlags.Instance);
             }
@@ -32,6 +33,31 @@ namespace PEAK_Menu.Utils
         public bool IsDebugConsoleOpen => DebugUIHandler.IsOpen;
         public bool IsDebugConsoleAllowed => DebugUIHandler.AllowOpen;
 
+        public void Initialize()
+        {
+            if (_wasInitialized) return;
+
+            try
+            {
+                _allowOpenOriginal = DebugUIHandler.AllowOpen;
+                _wasInitialized = true;
+
+                // Initialize managers here
+                _rainbowManager = new RainbowManager();
+                _noClipManager = new NoClipManager();
+                _playerManager = new PlayerManager();
+                
+                RegisterCustomPages();
+                
+                Plugin.Log.LogInfo("Debug Console Manager initialized with all managers");
+                Plugin.Log.LogInfo($"Original AllowOpen state: {_allowOpenOriginal}");
+            }
+            catch (System.Exception ex)
+            {
+                Plugin.Log.LogError($"Failed to initialize Debug Console Manager: {ex.Message}");
+            }
+        }
+
         public void RegisterCustomPages()
         {
             try
@@ -43,21 +69,9 @@ namespace PEAK_Menu.Utils
                     return;
                 }
 
-                // Register our custom debug pages with style inheritance
-                debugHandler.RegisterPage("PEAK Player", () => 
-                {
-                    return new PlayerDebugPage();
-                });
-                
-                debugHandler.RegisterPage("PEAK Admin", () => 
-                {
-                    return new AdminDebugPage();
-                });
-                
-                debugHandler.RegisterPage("PEAK Environment", () => 
-                {
-                    return new EnvironmentDebugPage();
-                });
+                debugHandler.RegisterPage("PEAK Player", () => new PlayerDebugPage());
+                debugHandler.RegisterPage("PEAK Admin", () => new AdminDebugPage());
+                debugHandler.RegisterPage("PEAK Environment", () => new EnvironmentDebugPage());
 
                 Plugin.Log.LogInfo("Custom debug pages registered successfully");
             }
@@ -67,31 +81,25 @@ namespace PEAK_Menu.Utils
             }
         }
 
-
-        public void Initialize()
+        public void RegisterConsoleCommands()
         {
-            if (_wasInitialized) return;
-
             try
             {
-                // Store original AllowOpen state
-                _allowOpenOriginal = DebugUIHandler.AllowOpen;
-                _wasInitialized = true;
-                
-                // Register our custom pages
-                RegisterCustomPages();
-                
-                Plugin.Log.LogInfo("Debug Console Manager initialized");
-                Plugin.Log.LogInfo($"Original AllowOpen state: {_allowOpenOriginal}");
+                ConsoleCommandRegistry.RegisterPEAKCommands();
+                Plugin.Log.LogInfo("Console commands registered with native debug console");
             }
             catch (System.Exception ex)
             {
-                Plugin.Log.LogError($"Failed to initialize Debug Console Manager: {ex.Message}");
+                Plugin.Log.LogError($"Failed to register console commands: {ex.Message}");
             }
         }
 
         public void Update()
         {
+            // Update all managers
+            _rainbowManager?.Update();
+            _noClipManager?.Update();
+
             // Update custom debug pages if the console is open
             if (DebugUIHandler.IsOpen)
             {
@@ -100,10 +108,8 @@ namespace PEAK_Menu.Utils
                     var debugHandler = DebugUIHandler.Instance;
                     if (debugHandler != null && _currentPageField != null)
                     {
-                        // Use reflection to get the current page
                         var currentPage = _currentPageField.GetValue(debugHandler);
                         
-                        // Check if it's one of our custom debug pages
                         if (currentPage is BaseCustomDebugPage customPage)
                         {
                             customPage.UpdateContent();
@@ -112,7 +118,6 @@ namespace PEAK_Menu.Utils
                 }
                 catch (System.Exception ex)
                 {
-                    // Silently handle errors to avoid spam, but log in debug mode
                     if (Plugin.PluginConfig?.EnableDebugMode?.Value == true)
                     {
                         Plugin.Log?.LogWarning($"Error updating debug page: {ex.Message}");
@@ -120,6 +125,11 @@ namespace PEAK_Menu.Utils
                 }
             }
         }
+
+        // Expose managers for debug pages and commands
+        public RainbowManager GetRainbowManager() => _rainbowManager;
+        public NoClipManager GetNoClipManager() => _noClipManager;
+        public PlayerManager GetPlayerManager() => _playerManager;
 
         public void ToggleDebugConsole()
         {
@@ -134,13 +144,11 @@ namespace PEAK_Menu.Utils
 
                 if (DebugUIHandler.IsOpen)
                 {
-                    // Close the debug console
                     debugHandler.Hide();
                     Plugin.Log.LogInfo("Built-in debug console closed");
                 }
                 else
                 {
-                    // Enable and open the debug console
                     DebugUIHandler.AllowOpen = true;
                     debugHandler.Show();
                     Plugin.Log.LogInfo("Built-in debug console opened");
@@ -200,6 +208,10 @@ namespace PEAK_Menu.Utils
             {
                 if (_wasInitialized)
                 {
+                    // Cleanup managers
+                    _rainbowManager?.DisableRainbow();
+                    _noClipManager?.DisableNoClip();
+                    
                     DebugUIHandler.AllowOpen = _allowOpenOriginal;
                     
                     if (DebugUIHandler.IsOpen)
@@ -231,7 +243,7 @@ namespace PEAK_Menu.Utils
                         if (currentPage != null)
                         {
                             currentPageInfo = currentPage.GetType().Name;
-                            if (currentPage is DebugPages.BaseCustomDebugPage)
+                            if (currentPage is BaseCustomDebugPage)
                             {
                                 currentPageInfo += " (PEAK Custom)";
                             }
@@ -248,7 +260,9 @@ namespace PEAK_Menu.Utils
                        $"  Allowed: {DebugUIHandler.AllowOpen}\n" +
                        $"  Open: {DebugUIHandler.IsOpen}\n" +
                        $"  Paused: {(DebugUIHandler.Instance?.Paused ?? false)}\n" +
-                       $"  Current Page: {currentPageInfo}";
+                       $"  Current Page: {currentPageInfo}\n" +
+                       $"  Rainbow: {(_rainbowManager?.IsRainbowEnabled ?? false)}\n" +
+                       $"  NoClip: {(_noClipManager?.IsNoClipEnabled ?? false)}";
             }
             catch (System.Exception ex)
             {

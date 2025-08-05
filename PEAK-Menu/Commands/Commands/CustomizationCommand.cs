@@ -101,7 +101,7 @@ Examples:
 
         private void HandleRainbowCommand(ParameterParser.ParsedParameters parsed)
         {
-            var rainbowManager = Plugin.Instance?._menuManager?.GetRainbowManager();
+            var rainbowManager = Plugin.Instance?._debugConsoleManager?.GetRainbowManager();
             if (rainbowManager == null)
             {
                 LogError("Rainbow manager not available");
@@ -189,7 +189,7 @@ Examples:
             int skinIndex = (int)parsed.NumericValue.Value;
 
             // Disable rainbow when manually setting skin
-            var rainbowMgr = Plugin.Instance?._menuManager?.GetRainbowManager();
+            var rainbowMgr = Plugin.Instance?._debugConsoleManager?.GetRainbowManager();
             if (rainbowMgr?.IsRainbowEnabled == true)
             {
                 rainbowMgr.DisableRainbow();

@@ -34,26 +34,36 @@ namespace PEAK_Menu.Utils.DebugPages
             BuildManagerDependentSections();
         }
 
+        // Update the TryInitializeManagers method
         private void TryInitializeManagers()
         {
             if (_managersInitialized) return;
 
             try
             {
-                _playerManager = Plugin.Instance?._menuManager?.GetPlayerManager();
-                _noClipManager = Plugin.Instance?._menuManager?.GetNoClipManager();
-                _rainbowManager = Plugin.Instance?._menuManager?.GetRainbowManager();
-
-                if (_playerManager != null && _noClipManager != null && _rainbowManager != null)
+                // Get managers from debug console manager instead of menu manager
+                var debugManager = Plugin.Instance?._debugConsoleManager;
+                if (debugManager != null)
                 {
-                    _managersInitialized = true;
-                    AddToConsole("All managers initialized successfully");
+                    _playerManager = debugManager.GetPlayerManager();
+                    _noClipManager = debugManager.GetNoClipManager();
+                    _rainbowManager = debugManager.GetRainbowManager();
+
+                    if (_playerManager != null && _noClipManager != null && _rainbowManager != null)
+                    {
+                        _managersInitialized = true;
+                        AddToConsole("All managers initialized successfully from debug console manager");
+                    }
+                    else
+                    {
+                        AddToConsole($"Debug managers status - Player: {(_playerManager != null ? "OK" : "NULL")}, " +
+                                    $"NoClip: {(_noClipManager != null ? "OK" : "NULL")}, " +
+                                    $"Rainbow: {(_rainbowManager != null ? "OK" : "NULL")}");
+                    }
                 }
                 else
                 {
-                    AddToConsole($"Managers status - Player: {(_playerManager != null ? "OK" : "NULL")}, " +
-                                $"NoClip: {(_noClipManager != null ? "OK" : "NULL")}, " +
-                                $"Rainbow: {(_rainbowManager != null ? "OK" : "NULL")}");
+                    AddToConsole("Debug console manager not available");
                 }
             }
             catch (System.Exception ex)

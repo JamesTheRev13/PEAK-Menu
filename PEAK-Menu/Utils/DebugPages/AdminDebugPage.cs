@@ -227,7 +227,7 @@ namespace PEAK_Menu.Utils.DebugPages
         {
             var section = CreateSection("Debug Console");
 
-            var debugConsoleManager = Plugin.Instance?._menuManager?.GetDebugConsoleManager();
+            var debugConsoleManager = Plugin.Instance?._debugConsoleManager;
             if (debugConsoleManager != null)
             {
                 // Live reactive toggle for debug console state

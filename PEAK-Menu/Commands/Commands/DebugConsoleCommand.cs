@@ -37,7 +37,7 @@ The debug console provides:
 
         public override void Execute(string[] parameters)
         {
-            var debugConsoleManager = Plugin.Instance._menuManager.GetDebugConsoleManager();
+            var debugConsoleManager = Plugin.Instance._debugConsoleManager;
             if (debugConsoleManager == null)
             {
                 LogError("Debug Console Manager not available");
@@ -100,7 +100,7 @@ The debug console provides:
 
         public override bool CanExecute()
         {
-            return Plugin.Instance._menuManager.GetDebugConsoleManager() != null;
+            return Plugin.Instance._debugConsoleManager != null;
         }
     }
 }

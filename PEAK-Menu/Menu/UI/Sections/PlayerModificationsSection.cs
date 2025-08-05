@@ -6,11 +6,9 @@ namespace PEAK_Menu.Menu.UI.Sections
 {
     public class PlayerModificationsSection
     {
-        private readonly MenuManager _menuManager;
 
-        public PlayerModificationsSection(MenuManager menuManager)
+        public PlayerModificationsSection()
         {
-            _menuManager = menuManager;
         }
 
         public void Draw(Action<string> addToConsole)
@@ -18,7 +16,7 @@ namespace PEAK_Menu.Menu.UI.Sections
             GUILayout.Space(UIConstants.STANDARD_SPACING);
             GUILayout.Label("=== Player Modifications ===");
 
-            var playerManager = _menuManager.GetPlayerManager();
+            var playerManager = Plugin.Instance._debugConsoleManager.GetPlayerManager();
             if (playerManager != null)
             {
                 DrawProtectionSettings(playerManager, addToConsole);

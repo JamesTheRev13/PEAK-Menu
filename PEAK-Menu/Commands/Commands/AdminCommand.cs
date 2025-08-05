@@ -580,7 +580,7 @@ Note: Use 'all' as player name to affect all players";
 
         private void HandleNoClipCommand(ParameterParser.ParsedParameters parsed)
         {
-            var noClipManager = Plugin.Instance?._menuManager?.GetNoClipManager();
+            var noClipManager = Plugin.Instance?._debugConsoleManager?.GetNoClipManager();
             if (noClipManager == null)
             {
                 LogError("NoClip manager not available");
@@ -698,7 +698,7 @@ Note: Use 'all' as player name to affect all players";
                 return;
             }
 
-            var playerManager = Plugin.Instance?._menuManager?.GetPlayerManager();
+            var playerManager = Plugin.Instance?._debugConsoleManager?.GetPlayerManager();
             if (playerManager == null)
             {
                 LogError("Player manager not available");
@@ -734,7 +734,7 @@ Note: Use 'all' as player name to affect all players";
                 return;
             }
 
-            var playerManager = Plugin.Instance?._menuManager?.GetPlayerManager();
+            var playerManager = Plugin.Instance?._debugConsoleManager?.GetPlayerManager();
             if (playerManager == null)
             {
                 LogError("Player manager not available");

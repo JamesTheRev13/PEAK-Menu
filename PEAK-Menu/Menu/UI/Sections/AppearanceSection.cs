@@ -1,16 +1,15 @@
 using UnityEngine;
 using System;
 using PEAK_Menu.Config;
+using PEAK_Menu.Utils;
 
 namespace PEAK_Menu.Menu.UI.Sections
 {
     public class AppearanceSection
     {
-        private readonly MenuManager _menuManager;
-
-        public AppearanceSection(MenuManager menuManager)
+        public AppearanceSection()
         {
-            _menuManager = menuManager;
+            // No longer needs MenuManager reference
         }
 
         public void Draw(Character character, Action<string> addToConsole)
@@ -33,7 +32,8 @@ namespace PEAK_Menu.Menu.UI.Sections
 
         private void DrawRainbowControls(Action<string> addToConsole)
         {
-            var rainbowManager = _menuManager.GetRainbowManager();
+            // Get rainbow manager from debug console manager
+            var rainbowManager = Plugin.Instance?._debugConsoleManager?.GetRainbowManager();
             if (rainbowManager != null)
             {
                 var isRainbowEnabled = rainbowManager.IsRainbowEnabled;
@@ -55,7 +55,7 @@ namespace PEAK_Menu.Menu.UI.Sections
             }
         }
 
-        private void DrawRainbowSpeedControls(object rainbowManager, Action<string> addToConsole)
+        private void DrawRainbowSpeedControls(RainbowManager rainbowManager, Action<string> addToConsole)
         {
             GUILayout.Space(UIConstants.SMALL_SPACING);
             GUILayout.Label("Rainbow Speed:");
@@ -73,8 +73,7 @@ namespace PEAK_Menu.Menu.UI.Sections
             {
                 if (GUILayout.Button(label, GUILayout.Width(UIConstants.BUTTON_MEDIUM_WIDTH)))
                 {
-                    var setSpeedMethod = rainbowManager.GetType().GetMethod("SetRainbowSpeed");
-                    setSpeedMethod?.Invoke(rainbowManager, new object[] { speed });
+                    rainbowManager.SetRainbowSpeed(speed);
                     addToConsole($"[PLAYER] Rainbow speed: {label}");
                 }
             }

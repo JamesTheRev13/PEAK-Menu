@@ -20,8 +20,8 @@ namespace PEAK_Menu.Menu.UI.Tabs
             _playerInfoSection = new PlayerInfoSection();
             _healthSection = new HealthManagementSection();
             _adminSection = new AdminFeaturesSection(this);
-            _appearanceSection = new AppearanceSection(menuManager);
-            _modificationsSection = new PlayerModificationsSection(menuManager);
+            _appearanceSection = new AppearanceSection();
+            _modificationsSection = new PlayerModificationsSection();
         }
 
         public override void Draw()
